@@ -1,7 +1,7 @@
 # BareMetal Firecracker
 **Just enough kernel**
 
-Official repo of the BareMetal [exokernel](http://en.wikipedia.org/wiki/Exokernel). It's written from scratch in Assembly, designed for x86-64 hardware, with no dependencies except for the virtual/physical hardware. An ARM and/or RISC-V rewrite would be considered once hardware is standardized.
+Official source code of the BareMetal [exokernel](http://en.wikipedia.org/wiki/Exokernel) for Firecracker. It's written from scratch in Assembly, designed for x86-64 hardware, with no dependencies except for the virtual/physical hardware. An ARM and/or RISC-V rewrite would be considered once hardware is standardized.
 
 ### Table of Contents
 
@@ -41,29 +41,15 @@ The premise of the kernel is to "do one thing well" and that is to execute a pro
 * CPU
   * Multi-core on 64-bit x86 systems (Intel/AMD)
 * Bus
-  * PCIe
-  * PCI
-  * xHCI (USB 3)
+  * N/A - Firecracker uses MMIO by default
 * Network
-  * Gigabit
-    * Intel 8254x Gigabit (e1000)
-    * Intel 8257x Gigabit (e1000e)
-  * 10 Gigabit
-    * Intel 8259x 10 Gigabit (ixbge)
-  * Virtual
-    * Virtio-Net
+  * Virtio-Net
 * Storage
-  * NVMe
-  * AHCI (SATA)
   * Virtio-Blk
 * HID (Human Interface Devices)
   * Input
-    * PS/2 Keyboard
-    * USB Keyboard
     * Serial
   * Output
-    * LFB (linear frame buffer at native screen resolution with 1024x768x32bpp as fallback)
-    * VGA text mode (80x25 characters with 16 colors)
     * Serial
 
 ## Try it out
