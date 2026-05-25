@@ -165,6 +165,8 @@ good_boot:
 	mov al, 0x00
 	out 0x40, al
 
+	call init_cpu
+
 	; Copy the GDT to its final location in memory at 0x1000
 	mov esi, gdt64
 	mov edi, 0x00001000		; GDT address
@@ -528,6 +530,7 @@ stub:
 
 %include "interrupt.asm"
 %include "timer.asm"
+%include "cpu.asm"
 %include "debug.asm"
 
 ; x86-64 structures
