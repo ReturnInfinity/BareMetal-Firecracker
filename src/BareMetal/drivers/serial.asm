@@ -65,79 +65,99 @@ serial_send_wait:
 
 
 ; -----------------------------------------------------------------------------
-; serial_recv -- Receives a character via the configured serial port
+; serial_recv -- Pull the next character from the serial ring buffer
 ;  IN:	Nothing
-; OUT:	AL = Character received, 0 if no character
+; OUT:	AL = Next character from ring buffer, 0 if no character available
+;	All other registers preserved
 serial_recv:
-	push rdx
+	push rbx
 
-	; Check if serial port has pending data
-	mov dx, COM_PORT_LINE_STATUS
-	in al, dx
-	and al, 0x01			; Bit 0
-	cmp al, 0
-	je serial_recv_nochar
+	movzx ebx, byte [serial_rb_head]
+	mov al, [serial_rb_tail]
+	cmp bl, al			; If head equals tail then buffer is empty
+	je serial_recv_empty		; Bail out if so
 
-	; Read from the serial port
-	mov dx, COM_PORT_DATA
-	in al, dx
-	cmp al, 0x0D			; Enter via serial?
-	je serial_recv_enter
-	cmp al, 0x7F			; Backspace via serial?
-	je serial_recv_backspace
+	mov al, [serial_rb + rbx]	; Read character at head
+	inc bl				; Advance head (wraps back to zero on its own)
+	mov [serial_rb_head], bl	; Store it
 
-serial_recv_done:
-	pop rdx
+	pop rbx
 	ret
 
-serial_recv_nochar:
+serial_recv_empty:
 	xor al, al
-	pop rdx
+	pop rbx
 	ret
-
-serial_recv_enter:
-	mov al, 0x1C			; Adjust it to the same value as a keyboard
-	jmp serial_recv_done
-serial_recv_backspace:
-	mov al, 0x0E			; Adjust it to the same value as a keyboard
-	jmp serial_recv_done
 ; -----------------------------------------------------------------------------
 
 
 ; -----------------------------------------------------------------------------
-; serial_interrupt -- Receives a character via the configured serial port
+; serial_interrupt -- Receives characters into the serial ring buffer
 serial_interrupt:
 	push rdx
 	push rax
+	push rbx
+	push rcx
+
 serial_interrupt_check_iir:
 	mov dx, COM_PORT_INTERRUPT_ID
 	in al, dx
-	test al, 1		; bit 0 = 0 means interrupt pending
+	test al, 1			; bit 0 = 0 means interrupt pending
 	jnz serial_interrupt_done	; bit 0 = 1 means no more interrupts
-	and al, 0x0E		; Isolate interrupt ID bits
-	cmp al, 0x04		; Received Data Available
+	and al, 0x0E			; Isolate interrupt ID bits
+	cmp al, 0x04			; Received Data Available
 	je serial_interrupt_recv_data
-	cmp al, 0x0C		; Character Timeout
+	cmp al, 0x0C			; Character Timeout
 	je serial_interrupt_recv_data
-	cmp al, 0x06		; Receiver Line Status. Clear by reading LSR
+	cmp al, 0x06			; Receiver Line Status - clear by reading LSR
 	je serial_interrupt_line_status
-	cmp al, 0x00		; Modem Status - clear by reading MSR
+	cmp al, 0x00			; Modem Status - clear by reading MSR
 	je serial_interrupt_modem_status
 	jmp serial_interrupt_check_iir
+
 serial_interrupt_recv_data:
-	call serial_recv	; TODO this checks line status again
-	mov [key], al
-	jmp serial_interrupt_check_iir
+	mov dx, COM_PORT_LINE_STATUS
+	in al, dx
+	test al, 0x01			; Bit 0 = Data Ready
+	jz serial_interrupt_check_iir	; No more data, check IIR for other interrupts
+	mov dx, COM_PORT_DATA
+	in al, dx
+	cmp al, 0x0D			; Enter via serial?
+	je serial_interrupt_recv_enter
+	cmp al, 0x7F			; Backspace via serial?
+	je serial_interrupt_recv_backspace
+
+serial_interrupt_recv_store:
+	movzx rbx, byte [serial_rb_tail]
+	mov cl, bl
+	inc cl				; Next tail position (wraps as byte)
+	cmp cl, [serial_rb_head]	; Full when next tail == head
+	je serial_interrupt_recv_data	; Drop character but keep draining
+	mov [serial_rb + rbx], al
+	mov [serial_rb_tail], cl
+	jmp serial_interrupt_recv_data	; Check LSR for more data
+
+serial_interrupt_recv_enter:
+	mov al, 0x1C			; Adjust to match keyboard scancode
+	jmp serial_interrupt_recv_store
+
+serial_interrupt_recv_backspace:
+	mov al, 0x0E			; Adjust to match keyboard scancode
+	jmp serial_interrupt_recv_store
+
 serial_interrupt_line_status:
 	mov dx, COM_PORT_LINE_STATUS
-	in al, dx		; Reading LSR clears the interrupt
+	in al, dx			; Reading LSR clears the interrupt
 	jmp serial_interrupt_check_iir
+
 serial_interrupt_modem_status:
 	mov dx, COM_PORT_MODEM_STATUS
-	in al, dx		; Reading MSR clears the interrupt
+	in al, dx			; Reading MSR clears the interrupt
 	jmp serial_interrupt_check_iir
 
 serial_interrupt_done:
+	pop rcx
+	pop rbx
 	pop rax
 	pop rdx
 	ret

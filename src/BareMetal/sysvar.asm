@@ -105,6 +105,10 @@ os_ioapic_mde:		equ os_SystemVariables + 0x0317
 key_control:		equ os_SystemVariables + 0x0318
 os_net_icount:		equ os_SystemVariables + 0x031B
 
+serial_rb_head:		equ os_SystemVariables + 0x0320	; Serial ring buffer head (read) pointer
+serial_rb_tail:		equ os_SystemVariables + 0x0321	; Serial ring buffer tail (write) pointer
+serial_rb:		equ os_SystemVariables + 0x0400	; Serial ring buffer (256 bytes)
+
 kvm_timer:		equ os_SystemVariables + 0x1000
 
 ; System tables

@@ -9,11 +9,10 @@
 ; -----------------------------------------------------------------------------
 ; b_input -- Returns a byte of input
 ;  IN:	Nothing
-; OUT:	AL = 0 if no key pressed, otherwise ASCII code, other regs preserved
+; OUT:	AL = 0 if no byte, otherwise ASCII code, other regs preserved
 ;	All other registers preserved
 b_input:
-	mov al, [key]			; Keyboard/Serial interrupt handler sets byte
-	mov byte [key], 0x00		; Clear the variable as the byte is in AL now
+	call serial_recv
 	ret
 ; -----------------------------------------------------------------------------
 

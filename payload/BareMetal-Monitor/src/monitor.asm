@@ -930,12 +930,14 @@ ui_input:
 	mov rdx, rcx			; Max chars to accept
 	xor ebx, ebx			; Cursor position
 	xor ecx, ecx			; Offset from start
+	jmp ui_input_more
 
+ui_input_halt:
+	hlt
 ui_input_more:
-	hlt				; Halt until an interrupt is received
 	call [b_input]			; Returns the character entered. 0 if there was none
 	cmp al, 0
-	jz ui_input_more		; If there was no character then halt until an interrupt is received
+	jz ui_input_halt		; If there was no character then halt until an interrupt is received
 ui_input_process:
 ;	cmp al, 0x02
 ;	je ui_input_inc_cursor
