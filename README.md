@@ -12,23 +12,39 @@ On an AMD Ryzen AI Max+ 395 running Ubuntu Desktop 25.10 execution times are as 
 
 ## Contents
 
-- `src`: Source code for BareMetal init and the BareMetal kernel.
-- `payload`: Payload for the kernel - Currently a minimal version of BareMetal Monitor.
-- `scripts`: Scripts for creating/removing bridge and tap networks.
+- `src`: Source code for BareMetal init and the BareMetal kernel
+- `payload`: Payload for the kernel - Currently a minimal version of BareMetal Monitor
+- `scripts`: Scripts for creating/removing bridge and tap networks
 - `img`: Screenshot
 
+## Getting Started
+
+### Prerequisites
+
+nasm, firecracker, curl or wget
+
+### Building
+
+`./firecracker-build.sh`
+
+### Running
+
+`./firecracker.sh`
+
 ## Firecracker
+
+Firecracker provides hardware isolated microVMs.
 
 ### Overview
 
 What is missing from a "standard" VM:
 
-- No BIOS or UEFI
+- No firmware (BIOS/UEFI)
 - No PCI/PCIe bus
 - No VGA or LFB
 - No USB
+- No HPET
 - Minimal ACPI
-- NO HPET
 
 What you get:
 
