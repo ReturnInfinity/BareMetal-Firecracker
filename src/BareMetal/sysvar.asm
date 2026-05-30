@@ -17,7 +17,6 @@ msg_nvs:		db 13, 10, 'nvs', 0
 msg_net:		db 13, 10, 'net', 0
 msg_ok:			db ' ok', 0
 msg_ready:		db 13, 10, 'system ready', 13, 10, 13, 10, 0
-msg_banner:		db "============================================================", 13, 10, 0
 
 ; Memory addresses
 

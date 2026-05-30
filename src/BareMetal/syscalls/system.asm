@@ -102,8 +102,6 @@ b_system_reboot:
 	call reboot
 
 b_system_shutdown:
-	mov rsi, msg_banner
-	call os_debug_string
 ; 	; Keyboard reset method for Firecracker
 	mov al, 0x0FE
 	out 0x64, al
