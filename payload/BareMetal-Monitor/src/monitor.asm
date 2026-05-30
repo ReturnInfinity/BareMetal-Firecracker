@@ -19,9 +19,6 @@ start:
 	jne poll			; If not, jump to poll
 	mov byte [firstrun], 0		; Otherwise clear the first run flag
 
-	mov rsi, msg_banner
-	call ui_output
-
 	; Output system details
 
 	; Output core count
@@ -1152,7 +1149,6 @@ dirmsgbmfs:		db 'BMFS', 10, 0
 initapp:		db 'init.app', 0
 dump_b_string:		db ' | '
 dump_b_chars:		db '                ', 0
-msg_banner:		db "============================================================", 13, 10, 0
 
 ; Variables
 align 16
