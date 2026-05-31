@@ -1,7 +1,7 @@
 #!/bin/sh
 # firecracker.sh - Manage a BareMetal Firecracker VM
 #
-# Usage: sudo firecracker.sh <command> [args]
+# Usage: sudo ./firecracker.sh <command> [args]
 #
 # sudo required to run firecracker, rm, and chmod
 # Otherwise `sudo visudo` and add:
@@ -39,6 +39,7 @@ cmd="${1:-}" # first argument is the subcommand (default: empty)
 case "$cmd" in
 	start)
 		rm -f "$SOCKET"
+		rm -f "$FCLOG"
 		rm -f "$VMLOG"
 
 		# Kill any leftover session from a previous run
@@ -75,7 +76,7 @@ case "$cmd" in
 			-H 'Content-Type: application/json' \
 			-d '{ "action_type": "InstanceStart" }' > /dev/null
 
-		echo "VM started. Log: $VMLOG"
+		echo "VM started. VM Log: $VMLOG, Firecracker Log: $FCLOG"
 		;;
 
 	send)
