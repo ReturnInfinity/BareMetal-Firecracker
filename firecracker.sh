@@ -21,7 +21,8 @@
 #	KERNEL		Path to the BareMetal ELF kernel image
 #	DISK		Path to the disk image
 #	SESSION		Screen session name
-#	LOG		Path to the serial console log file
+#	VMLOG		Path to the serial console log file
+#   FCLOG       Path to the firecracker log file
 set -eu
 
 SOCKET=/run/firecracker.socket
@@ -38,13 +39,13 @@ cmd="${1:-}" # first argument is the subcommand (default: empty)
 case "$cmd" in
 	start)
 		rm -f "$SOCKET"
-		rm -f "$LOG"
+		rm -f "$VMLOG"
 
 		# Kill any leftover session from a previous run
 		screen -S "$SESSION" -X quit 2>/dev/null || true
 
 		# Start Firecracker in a detached screen session with output logging
-		screen -L -Logfile "$LOG" -dmS "$SESSION" \
+		screen -L -Logfile "$VMLOG" -dmS "$SESSION" \
 			firecracker --api-sock "$SOCKET" --log-path "$FCLOG"
 
 		# Flush screen log immediately instead of the default 10s interval
@@ -74,7 +75,7 @@ case "$cmd" in
 			-H 'Content-Type: application/json' \
 			-d '{ "action_type": "InstanceStart" }' > /dev/null
 
-		echo "VM started. Log: $LOG"
+		echo "VM started. Log: $VMLOG"
 		;;
 
 	send)
@@ -84,7 +85,7 @@ case "$cmd" in
 
 	output)
 		# Dump full output log
-		tr -d '\r' < "$LOG" 2>/dev/null || echo "(no output yet)"
+		tr -d '\r' < "$VMLOG" 2>/dev/null || echo "(no output yet)"
 		;;
 
 	attach)
@@ -126,7 +127,8 @@ case "$cmd" in
 		echo "  KERNEL  $KERNEL"
 		echo "  DISK    $DISK"
 		echo "  SESSION $SESSION"
-		echo "  LOG     $LOG"
+		echo "  VMLOG   $VMLOG"
+		echo "  FCLOG   $FCLOG"
 		;;
 
 	*)
