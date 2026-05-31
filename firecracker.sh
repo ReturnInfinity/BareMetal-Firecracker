@@ -6,6 +6,7 @@
 # sudo required to run firecracker, rm, and chmod
 # Otherwise `sudo visudo` and add:
 # YOURUSERNAME ALL=(ALL) NOPASSWD: /usr/local/bin/firecracker, /usr/bin/rm, /usr/bin/chmod
+# and add `sudo` to the relevant commands in this script
 #
 # Commands:
 #	start		Configure and start the VM (sets up kernel, disk, network, and launches instance)
@@ -21,7 +22,7 @@
 #	KERNEL		Path to the BareMetal ELF kernel image
 #	DISK		Path to the disk image
 #	SESSION		Screen session name
-#	VMLOG		Path to the serial console log file
+#	VMLOG		Path to the VM serial console log file
 #   FCLOG       Path to the firecracker log file
 set -eu
 
@@ -29,8 +30,8 @@ SOCKET=/run/firecracker.socket
 KERNEL="$PWD/sys/baremetal.elf"
 DISK="$PWD/disk.img"
 SESSION=fc-vm
-FCLOG="/tmp/fc-log.log"
-VMLOG=/tmp/fc-vm-serial.log
+FCLOG="/tmp/fc.log"
+VMLOG=/tmp/fc-vm.log
 
 # Prepare arguments
 cmd="${1:-}" # first argument is the subcommand (default: empty)
