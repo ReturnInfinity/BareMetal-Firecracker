@@ -1,7 +1,11 @@
 #!/bin/sh
 # firecracker.sh - Manage a BareMetal Firecracker VM
 #
-# Usage: firecracker.sh <command> [args]
+# Usage: sudo firecracker.sh <command> [args]
+#
+# sudo required to run firecracker, rm, and chmod
+# Otherwise `sudo visudo` and add:
+# YOURUSERNAME ALL=(ALL) NOPASSWD: /usr/local/bin/firecracker, /usr/bin/rm, /usr/bin/chmod
 #
 # Commands:
 #	start		Configure and start the VM (sets up kernel, disk, network, and launches instance)
@@ -24,7 +28,8 @@ SOCKET=/run/firecracker.socket
 KERNEL="$PWD/sys/baremetal.elf"
 DISK="$PWD/disk.img"
 SESSION=fc-vm
-LOG=/tmp/fc-serial.log
+FCLOG="/tmp/fc-log.log"
+VMLOG=/tmp/fc-vm-serial.log
 
 # Prepare arguments
 cmd="${1:-}" # first argument is the subcommand (default: empty)
@@ -32,7 +37,7 @@ cmd="${1:-}" # first argument is the subcommand (default: empty)
 
 case "$cmd" in
 	start)
-		sudo rm -f "$SOCKET"
+		rm -f "$SOCKET"
 		rm -f "$LOG"
 
 		# Kill any leftover session from a previous run
@@ -40,14 +45,14 @@ case "$cmd" in
 
 		# Start Firecracker in a detached screen session with output logging
 		screen -L -Logfile "$LOG" -dmS "$SESSION" \
-			sudo firecracker --api-sock "$SOCKET" --log-path /dev/null
+			firecracker --api-sock "$SOCKET" --log-path "$FCLOG"
 
 		# Flush screen log immediately instead of the default 10s interval
 		screen -S "$SESSION" -X logfile flush 0
 
 		# Wait for socket
 		while [ ! -S "$SOCKET" ]; do sleep 0.05; done
-		sudo chmod 666 "$SOCKET"
+		chmod 666 "$SOCKET"
 
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/boot-source' \
 			-H 'Content-Type: application/json' \

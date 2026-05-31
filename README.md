@@ -21,7 +21,7 @@ On an AMD Ryzen AI Max+ 395 running Ubuntu Desktop 25.10 execution times are as 
 
 ### Prerequisites
 
-nasm, firecracker, curl or wget
+nasm, firecracker (see FIRECRACKER.md), curl or wget
 
 ### Building
 
@@ -29,7 +29,7 @@ nasm, firecracker, curl or wget
 
 ### Running
 
-`./firecracker.sh`
+`sudo ./firecracker.sh`
 
 ## Firecracker
 

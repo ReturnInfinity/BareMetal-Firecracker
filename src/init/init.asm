@@ -24,6 +24,7 @@
 ; =============================================================================
 
 BITS 64
+DEFAULT ABS
 
 ; A few Linux boot_params offsets that are useful to inspect.
 ; These are standard x86 boot protocol offsets inside struct boot_params.

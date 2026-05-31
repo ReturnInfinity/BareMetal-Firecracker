@@ -1,2 +1,4 @@
 sys
 .DS_Store
+firecracker-v*
+release-v*

@@ -1,29 +1,36 @@
 # Instructions for installing Firecracker
 
-Tested on Ubuntu 25.10
+Tested on Ubuntu 26.04
 
 `sudo apt update`
 
 `sudo apt upgrade`
 
-`sudo apt install -y curl git make clang gcc pkg-config libssl-dev libclang-dev build-essential qemu-kvm bridge-utils virt-manager libvirt-daemon-system libvirt-clients`
+`sudo apt install -y curl git make clang gcc pkg-config libssl-dev libclang-dev build-essential ubuntu-virt qemu-system-x86 bridge-utils virt-manager libvirt-daemon-system libvirt-clients`
 
-`curl -LO https://github.com/firecracker-microvm/firecracker/releases/download/v1.15.0/firecracker-v1.15.0-x86_64.tgz`
+`curl -LO https://github.com/firecracker-microvm/firecracker/releases/download/v1.15.1/firecracker-v1.15.1-x86_64.tgz`
 
 extract it
 
-`tar -xf firecracker-v1.15.0-x86_64.tgz`
+`tar -xf firecracker-v1.15.1-x86_64.tgz`
 
 cd into it
 
-`cd release-v1.15.0-x86_64/`
+`cd release-v1.15.1-x86_64/`
+
+copy to /usr/local/bin/
+
+`sudo cp firecracker-v1.15.1-x86_64 /usr/local/bin/firecracker`
+
+## Testing
+
+This section details testing firecracker with a standard Linux image.
 
 run it (ideally in a new console window)
 
-`sudo ./firecracker-v1.15.0-x86_64`
+`sudo ./firecracker-v1.15.1-x86_64`
 
 Check what it is listening on. Likely /run/firecracker.socket
-
 
 In another console:
 
