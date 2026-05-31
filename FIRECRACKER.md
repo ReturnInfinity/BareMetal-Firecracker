@@ -6,7 +6,11 @@ Tested on Ubuntu 26.04
 
 `sudo apt upgrade`
 
-`sudo apt install -y curl git make clang gcc pkg-config libssl-dev libclang-dev build-essential ubuntu-virt qemu-system-x86 bridge-utils virt-manager libvirt-daemon-system libvirt-clients`
+install curl and bridge-utils
+
+`sudo apt install -y curl bridge-utils`
+
+download firecracker
 
 `curl -LO https://github.com/firecracker-microvm/firecracker/releases/download/v1.15.1/firecracker-v1.15.1-x86_64.tgz`
 
