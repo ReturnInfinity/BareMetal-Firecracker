@@ -1,18 +1,16 @@
 #!/bin/sh
 # firecracker.sh - Manage a BareMetal Firecracker VM
 #
-# Usage: sudo ./firecracker.sh <command> [args]
+# Usage: ./firecracker.sh <command> [args]
 #
-# sudo required to run firecracker, rm, and chmod
-# Otherwise `sudo visudo` and add:
-# YOURUSERNAME ALL=(ALL) NOPASSWD: /usr/local/bin/firecracker, /usr/bin/rm, /usr/bin/chmod
-# and add `sudo` to the relevant commands in this script
+# Requires the current user to be in the 'kvm' group (one-time setup):
+#   sudo usermod -aG kvm $USER   # then log out and back in
 #
 # Commands:
 #	start		Configure and start the VM (sets up kernel, disk, network, and launches instance)
 #	status		Check if the VM is currently running
 #	send <text>	Send a line of text to the VM serial console followed by Enter
-#	output		Print the VM serial console log
+#	output		Print VM serial console output since last run
 #	attach		Attach to the interactive screen session for the VM console
 #	stop		Send Ctrl+Alt+Del to gracefully shut down the VM
 #	help		Display help info
@@ -23,15 +21,17 @@
 #	DISK		Path to the disk image
 #	SESSION		Screen session name
 #	VMLOG		Path to the VM serial console log file
-#   FCLOG       Path to the firecracker log file
+#	VMLOGPOS	Path to the output read-position tracking file
+#	FCLOG		Path to the firecracker log file
 set -eu
 
-SOCKET=/run/firecracker.socket
+SOCKET=/tmp/firecracker.socket
 KERNEL="$PWD/sys/baremetal.elf"
 DISK="$PWD/disk.img"
 SESSION=fc-vm
 FCLOG="/tmp/fc.log"
 VMLOG=/tmp/fc-vm.log
+VMLOGPOS=/tmp/fc-vm.log.pos
 
 # Prepare arguments
 cmd="${1:-}" # first argument is the subcommand (default: empty)
@@ -42,6 +42,7 @@ case "$cmd" in
 		rm -f "$SOCKET"
 		rm -f "$FCLOG"
 		rm -f "$VMLOG"
+		rm -f "$VMLOGPOS"
 
 		# Kill any leftover session from a previous run
 		screen -S "$SESSION" -X quit 2>/dev/null || true
@@ -55,7 +56,6 @@ case "$cmd" in
 
 		# Wait for socket
 		while [ ! -S "$SOCKET" ]; do sleep 0.05; done
-		chmod 666 "$SOCKET"
 
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/boot-source' \
 			-H 'Content-Type: application/json' \
@@ -86,8 +86,19 @@ case "$cmd" in
 		;;
 
 	output)
-		# Dump full output log
-		tr -d '\r' < "$VMLOG" 2>/dev/null || echo "(no output yet)"
+		# Print new output since the last time this command was run
+		# Use --full to print the entire log
+		if [ ! -f "$VMLOG" ]; then
+			echo "(no output yet)"
+		elif [ "${1:-}" = "--full" ]; then
+			tr -d '\r' < "$VMLOG"
+		else
+			pos=1
+			[ -f "$VMLOGPOS" ] && pos=$(cat "$VMLOGPOS")
+			tail -c "+$pos" "$VMLOG" | tr -d '\r'
+			printf '%s\n' "$(($(wc -c < "$VMLOG") - 1))" > "$VMLOGPOS"
+			printf '\n'
+		fi
 		;;
 
 	attach)
@@ -119,13 +130,13 @@ case "$cmd" in
 		echo "  start              Configure and start the VM"
 		echo "  status             Check if the VM is currently running"
 		echo "  send <text>        Send a line of text to the VM serial console"
-		echo "  output             Print the VM serial console log"
+		echo "  output [--full]    Print new VM serial console output (--full for entire log)"
 		echo "  attach             Attach to the interactive screen session"
 		echo "  stop               Gracefully shut down the VM (Ctrl+Alt+Del)"
 		echo "  help               Show this help screen"
 		echo ""
 		echo "Configuration (edit variables in script):"
-		echo "  SOCKET  $SOCKET"
+		echo "  SOCKET   $SOCKET"
 		echo "  KERNEL  $KERNEL"
 		echo "  DISK    $DISK"
 		echo "  SESSION $SESSION"
