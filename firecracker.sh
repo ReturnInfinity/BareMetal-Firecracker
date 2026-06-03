@@ -44,6 +44,12 @@ case "$cmd" in
 		rm -f "$VMLOG"
 		rm -f "$VMLOGPOS"
 
+		# Verify the tap device exists
+		if ! ip link show tap0 > /dev/null 2>&1; then
+			echo "Error: tap device 'tap0' not found. Create it before starting the VM." >&2
+			exit 1
+		fi
+
 		# Kill any leftover session from a previous run
 		screen -S "$SESSION" -X quit 2>/dev/null || true
 
