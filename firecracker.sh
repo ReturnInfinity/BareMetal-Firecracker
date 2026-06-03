@@ -46,7 +46,7 @@ case "$cmd" in
 
 		# Verify the tap device exists
 		if ! ip link show tap0 > /dev/null 2>&1; then
-			echo "Error: tap device 'tap0' not found. Create it before starting the VM." >&2
+			echo "Error: tap device 'tap0' not found. Create it before starting the VM. Check scripts dir." >&2
 			exit 1
 		fi
 
@@ -142,7 +142,7 @@ case "$cmd" in
 		echo "  help               Show this help screen"
 		echo ""
 		echo "Configuration (edit variables in script):"
-		echo "  SOCKET   $SOCKET"
+		echo "  SOCKET  $SOCKET"
 		echo "  KERNEL  $KERNEL"
 		echo "  DISK    $DISK"
 		echo "  SESSION $SESSION"
