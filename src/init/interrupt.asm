@@ -146,7 +146,7 @@ exception_gate_13:			; GP
 
 align 8
 exception_gate_14:			; PF (Page Fault)
-	; An error code is store in RAX (EAX padded)
+	; An error code is stored in RAX (EAX padded)
 	; Register CR2 is set to the virtual address which caused the Page Fault
 	push rax
 	mov al, 0x0E
@@ -220,7 +220,6 @@ exception_gate_main:
 	mov esi, int_string00
 	call debug_msg
 	mov eax, 0
-;	call b_smp_get_id		; Get the local CPU ID and print it
 	call debug_dump_eax
 	mov esi, int_string01
 	call debug_msg

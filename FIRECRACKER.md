@@ -1,30 +1,39 @@
-# Instructions for installing Firecracker
+# Firecracker
 
-Tested on Ubuntu 26.04
+## Installation
+
+*Tested on Ubuntu Desktop 26.04*
+
+Update your linux system
 
 `sudo apt update`
-
 `sudo apt upgrade`
 
-install curl and bridge-utils
+Install curl and bridge-utils
 
 `sudo apt install -y curl bridge-utils`
 
-download firecracker
+Download firecracker
 
 `curl -LO https://github.com/firecracker-microvm/firecracker/releases/download/v1.15.1/firecracker-v1.15.1-x86_64.tgz`
 
-extract it
+Extract it
 
 `tar -xf firecracker-v1.15.1-x86_64.tgz`
 
-cd into it
+CD into it
 
 `cd release-v1.15.1-x86_64/`
 
-copy to /usr/local/bin/
+Copy to /usr/local/bin/
 
 `sudo cp firecracker-v1.15.1-x86_64 /usr/local/bin/firecracker`
+
+Add the user running firecracker to the `kvm` group
+
+`sudo usermod -aG kvm USERNAME`
+
+If it was your user account log out and back in
 
 ## Testing
 
@@ -32,7 +41,7 @@ This section details testing firecracker with a standard Linux image.
 
 run it (ideally in a new console window)
 
-`sudo ./firecracker-v1.15.1-x86_64`
+`sudo firecracker`
 
 Check what it is listening on. Likely /run/firecracker.socket
 
@@ -42,11 +51,16 @@ In another console:
 
 `curl -LO https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin`
 
+You should have a 21MiB Linux kernel
+
 Config files
+
+Adjust path to vmlinux.bin as needed
+
 ```
 boot.json 
 {
-    "kernel_image_path": "/home/ian/Code/firecracker/vmlinux.bin",
+    "kernel_image_path": "/home/ian/Code/vmlinux.bin",
     "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"
 }
 
@@ -68,7 +82,7 @@ Set boot source
 
 or
 
-`curl --unix-socket /run/firecracker.socket -i -X PUT 'http://localhost/boot-source' -H 'Content-Type: application/json' -d '{ "kernel_image_path": "/home/ian/Code/firecracker/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off" }'`
+`curl --unix-socket /run/firecracker.socket -i -X PUT 'http://localhost/boot-source' -H 'Content-Type: application/json' -d '{ "kernel_image_path": "/home/ian/Code/vmlinux.bin", "boot_args": "console=ttyS0 reboot=k panic=1 pci=off" }'`
 
 Set machine config
 
@@ -90,11 +104,12 @@ or
 
 `curl --unix-socket /run/firecracker.socket -i -X PUT 'http://localhost/actions' -H 'Content-Type: application/json' -d '{ "action_type": "InstanceStart" }'`
 
-Linux should stop due to a missing rootfs.
+Check the terminal where you started firecracker. The linux kernel should have started and stopped due to a missing rootfs.
+
+Clear out the old socket
 
 `sudo rm /run/firecracker.socket`
 
-`sudo rm /run/firecracker.socket; sudo ./firecracker-v1.15.0-x86_64`
 
 Production Notes for Linux:
 

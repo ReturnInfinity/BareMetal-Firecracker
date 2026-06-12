@@ -6,6 +6,7 @@
 ; =============================================================================
 
 
+; -----------------------------------------------------------------------------
 init_debug:
 
 	; Dump 4096 bytes of boot_params
@@ -30,7 +31,6 @@ next_byte:
 	cmp ecx, 0x1000
 	jne next_line
 	call debug_newline
-
 
 	; Verify boot_params as Firecracker sets them in src/vmm/src/arch/x86_64/mod.rs
 	mov edi, boot_params_ptr
@@ -74,7 +74,6 @@ dump_e820:
 
 	mov edi, boot_params_ptr
 	mov ebx, [edi]
-
 
 	; Inspect selected Linux boot protocol fields.
 
@@ -151,8 +150,9 @@ dump_e820:
 	call debug_msg
 
 end:
-
 	ret
+; -----------------------------------------------------------------------------
+
 
 ; -----------------------------------------------------------------------------
 ; debug_msg_char - Send a single char via the serial port
@@ -208,19 +208,26 @@ debug_msg_done:
 	ret
 ; -----------------------------------------------------------------------------
 
+
+; -----------------------------------------------------------------------------
 debug_space:
 	push rsi
 	mov rsi, msg_space
 	call debug_msg
 	pop rsi
 	ret
+; -----------------------------------------------------------------------------
 
+
+; -----------------------------------------------------------------------------
 debug_newline:
 	push rsi
 	mov rsi, msg_newline
 	call debug_msg
 	pop rsi
 	ret
+; -----------------------------------------------------------------------------
+
 
 ; -----------------------------------------------------------------------------
 ; debug_dump_(rax|eax|ax|al) -- Dump content of RAX, EAX, AX, or AL

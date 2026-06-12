@@ -407,10 +407,6 @@ pde_end:
 	xor edi, edi
 	mov edi, 0x5000
 
-	mov rax, [t0]
-	mov edi, 0x5050
-	stosq
-
 	; Read APIC Address from MSR and enable it (if not done so already)
 	mov ecx, 0x01B			; IA32_APIC_BASE
 	rdmsr				; Returns APIC in EDX:EAX
@@ -427,13 +423,12 @@ pde_end:
 	mov edi, 0x5604
 	stosd
 
-	; Gather T1
-	call kvm_get_usec
-	mov [t1], rax
-
-	mov [t1], rax
-	mov edi, 0x5058
-	stosq
+	; Timing Details
+	mov rax, [t0]
+	mov edi, 0x5050
+	stosq				; Store T0
+	call kvm_get_usec		; Gather T1
+	stosq				; Store T1
 
 	mov eax, 1
 	mov edi, 0x5012
@@ -452,27 +447,11 @@ pde_end:
 	mov edi, 0x50E2
 	stosb
 
-	; Dump ticks elapsed
-;	mov rbx, [t0]
-;	mov rax, [t1]
-;	sub rax, rbx		; RAX = RAX - RBX
-;	call debug_dump_rax
-;	call debug_newline
-
-	; Copy stub to some other memory address
+	; Copy stub to 0x6000
 	mov rsi, stub
 	mov rdi, 0x6000
 	mov rcx, 32
 	rep movsb
-
-
-;	mov esi, 0x5000
-;	mov ecx, 4096
-;	nb:
-;	lodsb
-;	call debug_dump_al
-;	dec ecx
-;	jnz nb
 
 %ifdef DEBUG
 	; Output shutdown message
@@ -519,8 +498,9 @@ error:
 align 16
 stub:
 	; Move kernel and its payload to 0x100000
-	mov rsi, 0x101000	; Wherever the kernel starts
-	mov rdi, 0x100000
+	; TODO - Calculate kernel source
+	mov rsi, 0x101000	; Kernel Source
+	mov rdi, 0x100000	; Kernel Destination
 	mov rcx, 32768/8	; Move 32KiB
 	rep movsq
 	; stub jumps to kernel
