@@ -47,7 +47,7 @@ Check what it is listening on. Likely /run/firecracker.socket
 
 In another console:
 
-`sudo chmod 777 /run/firecracker.socket`
+`sudo chmod 666 /run/firecracker.socket`
 
 `curl -LO https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin`
 
