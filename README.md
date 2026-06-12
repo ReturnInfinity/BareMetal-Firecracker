@@ -25,11 +25,11 @@ nasm, curl or wget, binutils, screen, firecracker (see FIRECRACKER.md)
 
 ### Building
 
-`./firecracker-build.sh`
+`./build.sh`
 
 ### Running
 
-`sudo ./firecracker.sh`
+`./firecracker.sh`
 
 ## Firecracker
 
