@@ -31,7 +31,7 @@ nasm, curl or wget, binutils, screen, firecracker (see FIRECRACKER.md)
 
 ### Running
 
-`./firecracker.sh`
+`./baremetal.sh`
 
 ## Firecracker
 
@@ -121,7 +121,7 @@ Init preps the system for the BareMetal Kernel. It sets the system up in a simil
 
 The BareMetal kernel in this repo has been adapted from the general version. VirtIO drivers have been reworked to use MMIO.
 
-Virtio-Block and Virtio-Net drivers are present. Virtio-Vsock, and other Firecracker-supported devices, is yet to be added.
+Virtio-Block and Virtio-Net drivers are present. Virtio-Vsock, and other Firecracker-supported devices, are yet to be added.
 
 SMP is not included in this version of BareMetal and will be added at a later date. BareMetal uses 2MiB of memory - A microVM should be provisioned with at least 4MiB of memory so 2MiB can be mapped at `0xFFFF800000000000`. 2MiB is the minimum if the application runs from kernel memory (there is some room).
 

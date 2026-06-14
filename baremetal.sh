@@ -1,7 +1,7 @@
 #!/bin/sh
-# firecracker.sh - Manage a BareMetal Firecracker VM
+# baremetal.sh - Manage a BareMetal Firecracker VM
 #
-# Usage: ./firecracker.sh <command> [args]
+# Usage: ./baremetal.sh <command> [args]
 #
 # Requires the current user to be in the 'kvm' group (one-time setup):
 #   sudo usermod -aG kvm $USER   # then log out and back in
