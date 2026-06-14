@@ -88,7 +88,7 @@ case "$cmd" in
 
 	send)
 		# Send a line of text to the VM serial console followed by Enter
-		screen -S "$SESSION" -X stuff "$(printf '%s\r' "${1:-}")"
+		screen -S "$SESSION" -X stuff "$(printf '%s\r' "$*")"
 		;;
 
 	output)
