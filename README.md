@@ -129,7 +129,6 @@ The kernel binary is currently ~5500 bytes.
 
 ## TODO
 
-- proper parsing of the `cmdline` string to gather the base addresses and IRQs of the Virtio MMIO devices
 - parse ACPI tables for APIC IDs (SMP removed from this version)
 - unikernel mode for diskless systems (embed app into ELF image)
 
