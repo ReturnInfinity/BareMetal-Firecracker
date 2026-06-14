@@ -113,11 +113,10 @@ good_boot:
 	; Parse the Virtio MMIO devices provided in the cmdline
 	; cmd_line_ptr: 00020000
 	; ext_cmd_line_ptr: 00000000
-	; cmdline: "console=ttyS0 reboot=k panic=1 pci=off pci=off root=/dev/vda rw virtio_mmio.device=4K@0xc0001000:5 virtio_mmio.device=4K@0xc0002000:6"
+	; cmdline: "console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda rw virtio_mmio.device=4K@0xc0001000:5 virtio_mmio.device=4K@0xc0002000:6"
 	; Ex : virtio_mmio.device=4K@0xc0001000:5
 	; Device has 4KB of MMIO, Base is 0xc0001000, IRQ is 5
 	; Build a table in the "Pure64" data space at 0x5800
-
 	mov esi, 0x5A00			; Location of copied cmd_line
 	mov edi, 0x5800			; Location to store mmio table
 	; TODO: move parse code to function to be called
@@ -129,7 +128,7 @@ parse_find:
 	jz parse_done			; Bail out if so
 
 	push rsi
-	lea rbx, [rel virtio_mmio_str]
+	lea rbx, [rel virtio_mmio_str]	; "virtio_mmio.device="
 cmp_loop:
 	mov cl, [ebx]
 	test cl, cl			; End of string to be matched?
@@ -154,11 +153,11 @@ skip_virtio_mmio_size:
 	test al, al			; At end of cmd_line string?
 	jz parse_done			; Bail out if so
 	inc esi
-	cmp al, '@'
+	cmp al, '@'			; Seach for the address start
 	jne skip_virtio_mmio_size
 
-; ESI should now be pointing to a hex address with a '0x' prefix
-	add esi, 2
+	; TODO - verify the prefix
+	add esi, 2			; ESI should now be pointing to a hex address with a '0x' prefix
 
 parse_hex:
 	xor r8d, r8d			; We store the parsed value to r8d
@@ -187,19 +186,30 @@ parse_hex_done:
 
 parse_decimal:
 	cmp byte [esi], ':'		; IRQ value following address?
-	jne parse_find
+	jne parse_find			; If the ':' doesn't exist then malformed entry
 	inc esi
-	xor r9d, r9d			; We store the parsed value to r9d
-	mov r9b, byte [esi]
-	sub r9d, 0x30
-	; TODO: This only works for a single digit
+	xor r9d, r9d
+	xor eax, eax
+parse_decimal_loop:
+	mov al, [esi]			; Gather a digit
+	cmp al, '0'
+	jb parse_decimal_done		; Bail out if below ascii '0' value
+	cmp al, '9'
+	ja parse_decimal_done		; Bail out if above ascii '9' value
+	sub al, '0'			; Covert ascii val to int
+	imul r9d, r9d, 10		; R9D = R9D * 10 (Multiply total so far by 10)
+	add r9d, eax			; Add new value to total
+	inc esi
+	jmp parse_decimal_loop
+parse_decimal_done:
+	test r9d, r9d			; Test R9D for a non-zero value (malformed entry)
+	jz parse_find			; Skip whole entry if 0
 
 	; Store the pair of 32-bit values
-	mov eax, r8d
+	mov eax, r8d			; Device MMIO base
 	stosd
-	mov eax, r9d
+	mov eax, r9d			; Device IRQ
 	stosd
-
 	jmp parse_find
 
 parse_done:
