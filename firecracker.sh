@@ -51,7 +51,7 @@ case "$cmd" in
 		fi
 
 		# Kill any leftover session from a previous run
-		screen -S "$SESSION" -X quit 2>/dev/null || true
+		screen -S "$SESSION" -X quit > /dev/null 2>&1 || true
 
 		# Start Firecracker in a detached screen session with output logging
 		screen -L -Logfile "$VMLOG" -dmS "$SESSION" \
