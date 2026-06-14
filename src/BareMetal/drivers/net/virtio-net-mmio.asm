@@ -21,15 +21,18 @@ net_virtio_mmio_init:
 	cmp rsi, 0
 	je virtio_net_mmio_init_done
 
-; Get the MAC address
+	; Build device info table
 	mov rdi, 0x11A000
 	mov ax, 0x1AF4
-	stosw
-	add rdi, 6
+	stosw			; Store driver ID
 
-	add esi, 0x100
-	mov ecx, 6
-	rep movsb
+	; Get the MAC address
+	add rdi, 6
+	add rsi, 0x100		; Add offset to MAC
+	mov eax, [rsi]		; read MAC bytes 0-3
+	mov [rdi], eax
+	mov ax, [rsi+4]		; read MAC bytes 4-5
+	mov [rdi+4], ax
 
 	add byte [os_net_icount], 1
 
@@ -89,18 +92,18 @@ virtio_net_mmio_reset_wait:
 
 	; 3.1.1 - Step 4
 	; Process the first 32-bits of Feature bits
-	xor eax, eax
-	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
+;	xor eax, eax
+;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
+;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
 	; Returns 2000DDA3
 ;	xor eax, eax
 ;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
 ;	mov eax, 0x00010020		; Feature bits 31:0 - STATUS (16), MAC (5)
 ;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax
 	; Process the next 32-bits of Feature bits
-	mov eax, 1
-	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
+;	mov eax, 1
+;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
+;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
 	; Returns ?
 ;	mov eax, 1
 ;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax

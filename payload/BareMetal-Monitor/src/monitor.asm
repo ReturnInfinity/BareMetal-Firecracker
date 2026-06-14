@@ -86,6 +86,19 @@ MACdone:
 	mov rsi, closebracketmsg
 	call ui_output
 
+; Display start time
+	mov rsi, startmsg
+	call ui_output
+	mov rax, [0x110030]
+	mov rbx, [0x5050]
+	sub rax, rbx
+	mov rdi, temp_string1
+	mov rsi, rdi
+	call string_from_int
+	call ui_output
+	mov rsi, usecmsg
+	call ui_output
+
 	mov rsi, newline
 	call ui_output
 
@@ -1133,6 +1146,8 @@ networkmsg:		db ']  [net: ', 0
 networkmacsep:		db ', ', 0
 diskmsg:		db ']  [hdd: ', 0
 mibmsg:			db ' MiB', 0
+startmsg:		db '  [start: ', 0
+usecmsg:		db ' usec]', 0
 namsg:			db 'N/A', 0
 closebracketmsg:	db ']', 0
 space:			db ' ', 0

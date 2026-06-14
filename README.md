@@ -10,6 +10,8 @@ On an AMD Ryzen AI Max+ 395 running Ubuntu Desktop 25.10 execution times are as 
 - Init: ~100µs from Firecracker handoff to kernel start.
 - BareMetal: ~700µs with network and disk enabled. ~500µs with only network enabled.
 
+This continues the work to support the "Hypervisor as the OS" philosphy as written [here](https://returninfinity.com/blog/hypervisos-as-data-centre-os).
+
 ## Contents
 
 - `src`: Source code for BareMetal init and the BareMetal kernel
