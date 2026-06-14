@@ -40,9 +40,9 @@ virtio_blk_mmio_reset_wait:
 
 	; 3.1.1 - Step 4
 	; Process the first 32-bits of Feature bits
-	xor eax, eax
-	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
+;	xor eax, eax
+;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
+;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
 ;	call os_debug_dump_eax
 ;	call os_debug_newline
 	; returns 0x20000000
@@ -53,9 +53,9 @@ virtio_blk_mmio_reset_wait:
 ;	mov eax, 0x44			; Only support BLK_SIZE (6) & SEG_MAX (2)
 ;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax
 	; Process the next 32-bits of Feature bits
-	mov eax, 1
-	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
+;	mov eax, 1
+;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
+;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
 ;	call os_debug_dump_eax
 ;	call os_debug_newline
 	; returns 0x00000001
