@@ -21,7 +21,17 @@ cd ..
 cd ..
 
 cd sys
-cat kernel.sys monitor.bin > payload.sys
+if [ $# -eq 1 ]; then
+	if [ -f $1 ]; then
+		echo "Unikernel mode enabled"
+		cat kernel.sys monitor.bin $1 > payload.sys
+	else
+		echo "'$1' does not exist in sys. Skipping unikernel build"
+		cat kernel.sys monitor.bin > payload.sys
+	fi
+else
+	cat kernel.sys monitor.bin > payload.sys
+fi
 
 objcopy --input-target binary --output-target elf64-x86-64 --binary-architecture i386:x86-64 --rename-section .data=.kernel payload.sys payload_sys.o
 ld -m elf_x86_64 -nostdlib -z max-page-size=0x1000 -T ../src/baremetal.ld -o baremetal.elf init.o payload_sys.o
