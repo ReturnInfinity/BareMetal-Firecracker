@@ -17,6 +17,7 @@ msg_nvs:		db 13, 10, 'nvs', 0
 msg_net:		db 13, 10, 'net', 0
 msg_ok:			db ' ok', 0
 msg_ready:		db 13, 10, 'system ready', 13, 10, 13, 10, 0
+app_start:		dq 0xFFFF800000000000
 
 ; Memory addresses
 
@@ -53,9 +54,6 @@ os_rx_buffer:		equ 0x0000000000140000	; 0x140000 -> 0x1C0000	512K Ethernet recei
 						; 0x1C0000 -> 0x1DFFFF	128K Free
 
 						; 0x1E0000 -> 0x1EFFFF	64K Monitor (free if not used)
-
-; App
-app_start:		equ 0xFFFF800000000000	; Location of application memory
 
 
 ; System Variables
