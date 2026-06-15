@@ -63,32 +63,39 @@ case "$cmd" in
 		# Wait for socket
 		while [ ! -S "$SOCKET" ]; do sleep 0.05; done
 
+		# Set Firecracker kernel and boot args
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/boot-source' \
 			-H 'Content-Type: application/json' \
 			-d "{ \"kernel_image_path\": \"$KERNEL\", \"boot_args\": \"\" }" > /dev/null
 
+		# Set Firecracker CPU and MEM
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/machine-config' \
 			-H 'Content-Type: application/json' \
 			-d '{ "vcpu_count": 1, "mem_size_mib": 4 }' > /dev/null
 
+		# Set Firecracker network
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/network-interfaces/eth0' \
 			-H 'Content-Type: application/json' \
 			-d '{ "iface_id": "eth0", "host_dev_name": "tap0", "guest_mac": "02:FC:AB:CD:EF:01" }' > /dev/null
 
+		# Set Firecracker storage
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/drives/rootfs' \
 			-H 'Content-Type: application/json' \
 			-d "{ \"drive_id\": \"rootfs\", \"path_on_host\": \"$DISK\", \"is_root_device\": true, \"is_read_only\": false }" > /dev/null
 
+		# Start Firecracker VM
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/actions' \
 			-H 'Content-Type: application/json' \
 			-d '{ "action_type": "InstanceStart" }' > /dev/null
 
-		echo "VM started. VM Log: $VMLOG, Firecracker Log: $FCLOG"
+		echo "BareMetal VM started. VM Log: $VMLOG, Firecracker Log: $FCLOG"
+
 		;;
 
 	send)
 		# Send a line of text to the VM serial console followed by Enter
 		screen -S "$SESSION" -X stuff "$(printf '%s\r' "$*")"
+
 		;;
 
 	output)
@@ -105,14 +112,16 @@ case "$cmd" in
 			printf '%s\n' "$(($(wc -c < "$VMLOG") - 1))" > "$VMLOGPOS"
 			printf '\n'
 		fi
+
 		;;
 
 	attach)
 		# Attach to the screen session for interactive use
 		if screen -list "$SESSION" > /dev/null 2>&1; then
-			screen -S "$SESSION" -X caption always "[BareMetal Firecracker] Detach: Ctrl+A then D"
+			screen -S "$SESSION" -X caption always "%{= 30}[BareMetal Firecracker] Detach: Ctrl+A, D"
 		fi
 		screen -r "$SESSION"
+
 		;;
 
 	status)
@@ -121,12 +130,15 @@ case "$cmd" in
 		else
 			echo "VM is not running"
 		fi
+
 		;;
 
 	stop)
+		# Stop Firecracker VM
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/actions' \
 			-H 'Content-Type: application/json' \
 			-d '{ "action_type": "SendCtrlAltDel" }' > /dev/null
+
 		;;
 
 	help|"")
@@ -148,12 +160,14 @@ case "$cmd" in
 		echo "  SESSION $SESSION"
 		echo "  VMLOG   $VMLOG"
 		echo "  FCLOG   $FCLOG"
+
 		;;
 
 	*)
 		echo "Unknown command: $cmd"
 		echo "Run '$0 help' for usage."
 		exit 1
+
 		;;
 esac
 
