@@ -148,6 +148,5 @@ The kernel binary is currently ~5500 bytes.
 ## TODO
 
 - parse ACPI tables for APIC IDs (SMP removed from this version)
-- unikernel mode for diskless systems (embed app into ELF image)
 
 //EOF
