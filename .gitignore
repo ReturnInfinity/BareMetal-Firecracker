@@ -1,4 +1,9 @@
-sys
+sys/*.elf
+sys/*.txt
+sys/*.o
+sys/*.sys
+sys/*.bin
+src/init/sys
 .DS_Store
 firecracker-v*
 release-v*
