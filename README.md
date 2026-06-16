@@ -1,10 +1,12 @@
 # BareMetal-Firecracker
 
-This repository contains the source code for BareMetal-Firecracker. This is a custom version of the BareMetal kernel explicitly for execution within a Firecracker microVM. The goal of this project was to achieve a <1ms cold start for the BareMetal kernel and its payload. That goal was achieved.
+This repository contains the source code for BareMetal-Firecracker. This is a custom version of the BareMetal kernel explicitly for execution within a Firecracker microVM.
+
+The goal of this project was to achieve a <1ms cold start for the BareMetal kernel and its payload. That goal was achieved.
 
 The purpose of this project is to allow for near "instant on" hardware isolated microVMs to be provisioned with as little as 2MiB of RAM assigned to each.
 
-On an AMD Ryzen AI Max+ 395 running Ubuntu Desktop 25.10 execution times are as follows:
+On an AMD Ryzen AI Max+ 395, running Ubuntu Desktop 26.04 with Firecracker v1.15.1, execution times are as follows:
 
 - Init: ~100µs from Firecracker handoff to kernel start.
 - BareMetal: ~700µs with network and disk enabled. ~500µs with only network enabled.
@@ -101,7 +103,7 @@ Firecracker uses the following memory address on startup:
 
 ### Startup
 
-Execution starts at `0x100000`. RFLAGS is set to `0x2`, RSP/RBP to `0x8FF0`, and RSI to address of `boot_params`.
+Execution starts in 64-bit mode at `0x100000`. RFLAGS is set to `0x2`, RSP/RBP to `0x8FF0`, and RSI to the address of `boot_params`.
 
 ## BareMetal Init
 
@@ -152,6 +154,8 @@ The kernel binary (actual code + data) is currently ~5500 bytes. About 913408 by
 ## TODO
 
 - parse ACPI tables for APIC IDs (SMP removed from this version)
+- when building in unikernel mode exclude monitor binary
 - re-org BareMetal memory usage to make more room for payloads when running with only 2MiB of RAM
+- combine build.sh into baremetal.sh
 
 //EOF
