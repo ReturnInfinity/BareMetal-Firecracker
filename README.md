@@ -2,8 +2,7 @@
 
 This repository contains the source code for BareMetal-Firecracker. This is a custom version of the BareMetal kernel explicitly for execution within a Firecracker microVM. The goal of this project was to achieve a <1ms cold start for the BareMetal kernel and its payload. That goal was achieved.
 
-- [BareMetal](https://github.com/ReturnInfinity/BareMetal), an exokernel written in x86-64 Assembly.
-- [Firecracker](https://firecracker-microvm.github.io), a streamlined virtualization environment.
+The purpose of this project is to allow for near "instant on" hardware isolated microVMs to be provisioned with as little as 2MiB of RAM assigned to each.
 
 On an AMD Ryzen AI Max+ 395 running Ubuntu Desktop 25.10 execution times are as follows:
 
@@ -11,6 +10,11 @@ On an AMD Ryzen AI Max+ 395 running Ubuntu Desktop 25.10 execution times are as 
 - BareMetal: ~700µs with network and disk enabled. ~500µs with only network enabled.
 
 This continues the work to support the "Hypervisor as the OS" philosphy as written [here](https://returninfinity.com/blog/hypervisos-as-data-centre-os).
+
+## Components
+
+- [BareMetal](https://github.com/ReturnInfinity/BareMetal), an exokernel written in x86-64 Assembly.
+- [Firecracker](https://firecracker-microvm.github.io), a streamlined virtualization environment.
 
 ## Contents
 
@@ -25,13 +29,13 @@ This continues the work to support the "Hypervisor as the OS" philosphy as writt
 
 nasm, curl or wget, binutils, screen, firecracker (see FIRECRACKER.md)
 
-A `tap0` network device is expected for firecracker network connectivity. `mkbr0.sh` in the scripts directory will configure the bridge and tap.
+A `tap0` network device is expected for microVM network connectivity. `mkbr0.sh` in the scripts directory will configure the bridge and tap.
 
 ### Building
 
 `./build.sh`
 
-Running this will build the kernel and the monitor utility. The monitor will start up on its own.
+Running this will build the kernel and the monitor utility. The monitor will run on startup.
 
 `./build.sh payload.app`
 
@@ -143,10 +147,11 @@ Virtio-Block and Virtio-Net drivers are present. Virtio-Vsock, and other Firecra
 
 SMP is not included in this version of BareMetal and will be added at a later date. BareMetal uses 2MiB of memory - A microVM should be provisioned with at least 4MiB of memory so 2MiB can be mapped at `0xFFFF800000000000`. 2MiB is the minimum if the application runs from kernel memory (there is some room).
 
-The kernel binary is currently ~5500 bytes.
+The kernel binary (actual code + data) is currently ~5500 bytes. About 913408 bytes of padding is added to the end of the kernel so that the monitor utility is already at 0x1E0000 in memory. The monitor utility is also padded to be 131072 bytes in length so that any application will be at 0x200000 in memory (which is mapped to 0xFFFF800000000000).
 
 ## TODO
 
 - parse ACPI tables for APIC IDs (SMP removed from this version)
+- re-org BareMetal memory usage to make more room for payloads when running with only 2MiB of RAM
 
 //EOF
