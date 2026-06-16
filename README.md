@@ -25,13 +25,31 @@ This continues the work to support the "Hypervisor as the OS" philosphy as writt
 
 nasm, curl or wget, binutils, screen, firecracker (see FIRECRACKER.md)
 
+A `tap0` network device is expected for firecracker network connectivity. `mkbr0.sh` in the scripts directory will configure the bridge and tap.
+
 ### Building
 
 `./build.sh`
 
+Running this will build the kernel and the monitor utility. The monitor will start up on its own.
+
+`./build.sh payload.app`
+
+Running this will configure "unikernel" mode. The app specified in the argument will run on startup. A couple examples are included:
+
+- `webserver.app` - [lwIP](https://github.com/IanSeyler/BareMetal-lwip) running as a DHCP client and web server
+- `hello.app` - "Hello World" in Assembly
+
 ### Running
 
-`./baremetal.sh`
+`./baremetal.sh` is the main script. It expects one of several arguments:
+
+- `start` - Start the BareMetal VM
+- `status` - Check if the VM is currently running
+- `send <text>` - Send a line of text to the VM serial console
+- `output [--full]` - Print new VM serial console output (--full for entire log)
+- `attach` - Attach to the interactive screen session
+- `stop` - Gracefully shut down the VM (Ctrl+Alt+Del)
 
 ## Firecracker
 
