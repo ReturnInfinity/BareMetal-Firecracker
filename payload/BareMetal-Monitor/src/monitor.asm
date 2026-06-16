@@ -10,7 +10,7 @@
 BITS 64
 ORG 0x001E0000
 DEFAULT ABS
-MONITORSIZE equ 6144			; Pad Monitor to this length
+MONITORSIZE equ 0x20000			; Pad Monitor to this length
 
 %include 'api/libBareMetal.asm'
 
@@ -1182,6 +1182,6 @@ temp_string2: times 50 db 0
 align 16
 temp_string: db 0
 
-times MONITORSIZE-($-$$) db 0x90	; Set the compiled monitor to at least this size in bytes
+times MONITORSIZE-($-$$) db 0x00	; Set the compiled monitor to at least this size in bytes
 ; =============================================================================
 ; EOF

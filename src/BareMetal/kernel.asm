@@ -12,7 +12,7 @@ DEFAULT ABS
 
 %DEFINE BAREMETAL_VER 'v1.0.0 (January 21, 2020)', 13, 'Copyright (C) 2008-2026 Return Infinity', 13, 0
 %DEFINE BAREMETAL_API_VER 1
-KERNELSIZE equ 8 * 1024			; Pad the kernel to this length
+KERNELSIZE equ 0xDF000			; Pad the kernel to this length (0xE0000 - 0x1000)
 
 
 kernel_start:
@@ -48,7 +48,23 @@ start:
 	add rax, 65536			; 64 KiB Stack
 	mov rsp, rax
 	mov rbp, rax
-	jmp 0x1E0000
+
+	; Check payload
+	cmp dword [os_MemAmount], 0	; Check for existence of App RAM
+	je start_monitor
+	cmp qword [0x200000], 0		; Check if something is in App RAM
+	je start_monitor
+
+start_app:
+	call [app_start]		; Execute app
+	jmp shutdown
+
+start_monitor:
+	call 0x1E0000			; Execute monitor
+
+shutdown:
+	; Shut down the system
+	jmp b_system_shutdown
 
 ; Includes
 %include "init.asm"
@@ -60,7 +76,7 @@ start:
 EOF:
 	db 0xDE, 0xAD, 0xC0, 0xDE
 
-times KERNELSIZE-($-$$) db 0x90		; Set the compiled kernel binary to at least this size in bytes
+times KERNELSIZE-($-$$) db 0x00		; Set the compiled kernel binary to at least this size in bytes
 
 
 ; =============================================================================

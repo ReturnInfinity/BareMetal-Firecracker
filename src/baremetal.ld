@@ -34,4 +34,12 @@ SECTIONS
 	{
 		*(.kernel)
 	} :data
+
+	/DISCARD/ :
+	{
+		*(.debug*)
+		*(.comment*)
+		*(.note*)
+		*(.eh_frame*)
+	}
 }
