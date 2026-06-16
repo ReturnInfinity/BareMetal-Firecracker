@@ -4,6 +4,7 @@ sys/*.o
 sys/*.sys
 sys/*.bin
 src/init/sys
+src/payload/BareMetal-Monitor/src/api/*
 .DS_Store
 firecracker-v*
 release-v*
