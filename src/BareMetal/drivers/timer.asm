@@ -49,15 +49,21 @@ init_timer_kvm:
 
 init_timer_kvm_clocksource2:
 	mov ecx, MSR_KVM_SYSTEM_TIME_NEW
+	mov ebx, MSR_KVM_WALL_CLOCK_NEW
 	jmp init_timer_kvm_configure
 
 init_timer_kvm_clocksource:
 	mov ecx, MSR_KVM_SYSTEM_TIME
+	mov ebx, MSR_KVM_WALL_CLOCK
 
 init_timer_kvm_configure:
 	xor edx, edx
 	mov eax, kvm_timer		; Memory address for structure
 	bts eax, 0			; Enable bit
+	wrmsr
+
+	mov ecx, ebx
+	mov eax, kvm_wallclock		; Memory address for structure
 	wrmsr
 
 	ret
@@ -139,6 +145,41 @@ kvm_get_usec_shift_done:
 	pop rdx
 	pop rdi
 	pop r9
+	pop r10
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; kvm_get_walltime -- Returns the wall-clock time KVM recorded at boot
+; IN:	Nothing
+; OUT:	RAX = Seconds since the Unix epoch (January 1, 1970, at 00:00:00 UTC)
+;	RDX = Nanoseconds (0 - 999999999)
+;	All other registers preserved
+kvm_get_walltime:
+	push r10
+	push rcx
+	push rdi
+
+	mov rdi, kvm_wallclock
+kvm_get_walltime_wait:
+	mov r10d, [rdi]			; Get 32-bit version
+	test r10d, 1			; Check if version is odd (update in progress)
+	jnz kvm_get_walltime_wait	; If so, retry
+
+	lfence
+
+	mov eax, [rdi+0x04]		; 32-bit sec
+	mov edx, [rdi+0x08]		; 32-bit nsec
+
+	; Recheck struct version
+	lfence
+	mov ecx, [rdi]			; Load 32-bit version
+	cmp r10d, ecx			; Compare to first version read
+	jne kvm_get_walltime_wait	; If not equal then an update occured, restart
+
+	pop rdi
+	pop rcx
 	pop r10
 	ret
 ; -----------------------------------------------------------------------------
@@ -270,6 +311,8 @@ timer_delay:
 ; MSRs
 MSR_KVM_SYSTEM_TIME_NEW	equ 0x4B564D01
 MSR_KVM_SYSTEM_TIME	equ 0x00000012
+MSR_KVM_WALL_CLOCK_NEW	equ 0x4B564D00
+MSR_KVM_WALL_CLOCK	equ 0x00000011
 
 ; KVM pvclock structure
 pvclock_version		equ 0x00 ; 32-bit
@@ -278,6 +321,11 @@ pvclock_system_time	equ 0x10 ; 64-bit
 pvclock_tsc_system_mul	equ 0x18 ; 32-bit
 pvclock_tsc_shift	equ 0x1C ; 8-bit
 pvclock_flags		equ 0x1D ; 8-bit
+
+; KVM pvclock wall clock structure
+pvclock_wc_version	equ 0x00 ; 32-bit
+pvclock_wc_sec		equ 0x04 ; 32-bit
+pvclock_wc_nsec		equ 0x08 ; 32-bit
 
 
 ; =============================================================================

@@ -107,6 +107,7 @@ serial_rb_tail:		equ os_SystemVariables + 0x0321	; Serial ring buffer tail (writ
 serial_rb:		equ os_SystemVariables + 0x0400	; Serial ring buffer (256 bytes)
 
 kvm_timer:		equ os_SystemVariables + 0x1000
+kvm_wallclock:		equ os_SystemVariables + 0x1020
 
 ; System tables
 bus_table:		equ os_SystemVariables + 0x8000

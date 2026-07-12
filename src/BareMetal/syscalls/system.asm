@@ -38,6 +38,10 @@ b_system_free_memory:
 	mov eax, [os_MemAmount]
 	ret
 
+b_system_wallclock:
+	call kvm_get_walltime
+	ret
+
 ; CPU
 ; N/A
 
@@ -195,7 +199,7 @@ b_system_table:
 ; Basic
 	dw b_system_timecounter		; 0x00
 	dw b_system_free_memory		; 0x01
-	dw none				; 0x02
+	dw b_system_wallclock		; 0x02
 	dw none				; 0x03
 	dw none				; 0x04
 	dw none				; 0x05
