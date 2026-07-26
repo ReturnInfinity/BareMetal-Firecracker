@@ -56,7 +56,11 @@ start:
 	je start_monitor
 
 start_app:
+	mov esi, msg_payload_start
+	call os_debug_string
 	call [app_start]		; Execute app
+	mov esi, msg_payload_end
+	call os_debug_string
 	jmp shutdown
 
 start_monitor:

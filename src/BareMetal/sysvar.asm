@@ -17,6 +17,8 @@ msg_nvs:		db 13, 10, 'nvs', 0
 msg_net:		db 13, 10, 'net', 0
 msg_ok:			db ' ok', 0
 msg_ready:		db 13, 10, 'system ready', 13, 10, 13, 10, 0
+msg_payload_start:	db 13, 10, '========================================', 13, 10, 'BareMetal Firecracker - Starting Payload', 13, 10, '========================================', 13, 10, 0
+msg_payload_end:	db 13, 10, '========================================', 13, 10, 'BareMetal Firecracker - Finished Payload', 13, 10, '========================================', 13, 10, 0
 app_start:		dq 0xFFFF800000000000
 
 ; Memory addresses
