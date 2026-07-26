@@ -26,7 +26,7 @@ init_64:
 
 	; Create exception gate stubs (Pure64 has already set the correct gate markers)
 	xor edi, edi			; 64-bit IDT at linear address 0x0000000000000000
-	mov ecx, 32
+	mov ecx, 32			; Create 32 even though current CPUs only generate up to 21
 	mov eax, exception_gate		; A generic exception handler
 make_exception_gate_stubs:
 	call create_gate
@@ -46,6 +46,7 @@ make_exception_gates:
 	jnz make_exception_gates
 
 	; Create interrupt gate stubs (Pure64 has already set the correct gate markers)
+	mov edi, 32
 	mov ecx, 256-32
 	mov eax, interrupt_gate
 make_interrupt_gate_stubs:
