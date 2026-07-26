@@ -38,6 +38,8 @@ b_output_serial:
 	push rcx
 	push rax
 
+	jecxz b_output_serial_done
+
 b_output_serial_next:
 	lodsb				; Load a byte from the string into AL
 	cmp al, 3			; Check for Decrement cursor
@@ -52,6 +54,7 @@ b_output_serial_send:
 	dec ecx				; Decrement the counter
 	jnz b_output_serial_next	; Loop if counter isn't zero
 
+b_output_serial_done:
 	pop rax
 	pop rcx
 	pop rsi
