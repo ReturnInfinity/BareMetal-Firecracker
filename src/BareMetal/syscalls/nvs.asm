@@ -21,6 +21,7 @@ b_nvs_read:
 	push rbx
 	push rax
 
+	jrcxz b_nvs_read_end
 	mov r8, rcx
 
 	; Calculate where in physical memory the data should be written to
@@ -37,6 +38,7 @@ b_nvs_read_sector:
 	sub r8, 1
 	jne b_nvs_read_sector
 
+b_nvs_read_end:
 	pop rax
 	pop rbx
 	pop rcx
@@ -61,6 +63,7 @@ b_nvs_write:
 	push rbx
 	push rax
 
+	jrcxz b_nvs_write_end
 	mov rdi, rsi			; The I/O functions only use RDI for the memory address
 	mov r8, rcx
 
@@ -78,6 +81,7 @@ b_nvs_write_sector:
 	sub r8, 1
 	jne b_nvs_write_sector
 
+b_nvs_write_end:
 	pop rax
 	pop rbx
 	pop rcx
