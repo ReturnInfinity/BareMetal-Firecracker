@@ -278,7 +278,7 @@ net_virtio_mmio_config:
 ; net_virtio_transmit - Transmit a packet via a Virtio NIC
 ;  IN:	RSI = Physical memory location of packet
 ;	RDX = Interface ID
-;	RCX = Length of packet
+;	RCX = Length of packet (only uses low 32-bits)
 ; OUT:	Nothing
 net_virtio_mmio_transmit:
 	push r11
