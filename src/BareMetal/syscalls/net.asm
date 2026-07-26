@@ -86,6 +86,7 @@ b_net_tx:
 	push rdx
 	push rax
 
+	jrcxz b_net_tx_done
 	and edx, 0x000000FF		; Keep low 8-bits of the requested interface
 
 	; Validity checks
@@ -114,6 +115,7 @@ b_net_tx:
 	inc qword [rdx+nt_tx_packets]
 	add qword [rdx+nt_tx_bytes], rcx
 
+b_net_tx_done:
 b_net_tx_fail:
 	pop rax
 	pop rdx
