@@ -79,7 +79,7 @@ b_net_config_end:
 ; -----------------------------------------------------------------------------
 ; b_net_tx -- Transmit a packet via the network
 ;  IN:	RSI = Memory address of where packet is stored
-;	RCX = Length of packet
+;	RCX = Length of packet (only uses low 32-bits)
 ;	RDX = Interface ID
 ; OUT:	Nothing. All registers preserved
 b_net_tx:
@@ -94,7 +94,7 @@ b_net_tx:
 	je b_net_tx_fail		; If so, bail out as there are no interfaces
 	cmp al, dl			; Make sure Interface ID < Interface count
 	jbe b_net_tx_fail		; Bail out if it was an invalid interface
-	cmp cx, 1522			; Check how many bytes were to be sent
+	cmp ecx, 1522			; Check how many bytes were to be sent
 	ja b_net_tx_fail		; Fail if more than 1522 bytes
 
 	; Calculate offset into net_table
