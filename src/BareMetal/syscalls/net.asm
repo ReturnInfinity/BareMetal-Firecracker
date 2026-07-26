@@ -46,32 +46,6 @@ b_net_status_end:
 ;	RAX = Base for receive descriptors
 ; OUT:	Nothing
 b_net_config:
-	push rsi			; TODO - Drivers should push/pop this if needed
-	push rdx
-	push rcx			; TODO - Drivers should push/pop this if needed
-	push rbx
-
-	and edx, 0x000000FF		; Keep low 8-bits of the requested interface
-
-	; Validity checks
-	mov bl, byte [os_net_icount]	; Gather Interface count
-	cmp bl, 0			; Is Interface count 0?
-	je b_net_config_end		; If so, bail out as there are no interfaces
-	cmp bl, dl			; Make sure Interface ID < Interface count
-	jbe b_net_config_end		; Bail out if it was an invalid interface
-
-	; Calculate offset into net_table
-	shl edx, 7			; Quick multiply by 128
-	add edx, net_table		; Add offset to net_table
-
-	; Call the driver config function
-	call [rdx+nt_config]		; Call driver transmit function passing RDX as entry to interface table
-
-b_net_config_end:
-	pop rbx
-	pop rcx
-	pop rdx
-	pop rsi
 	ret
 ; -----------------------------------------------------------------------------
 
