@@ -17,8 +17,8 @@ msg_nvs:		db 13, 10, 'nvs', 0
 msg_net:		db 13, 10, 'net', 0
 msg_ok:			db ' ok', 0
 msg_ready:		db 13, 10, 'system ready', 13, 10, 13, 10, 0
-msg_payload_start:	db 13, 10, '========================================', 13, 10, 'BareMetal Firecracker - Starting Payload', 13, 10, '========================================', 13, 10, 0
-msg_payload_end:	db 13, 10, '========================================', 13, 10, 'BareMetal Firecracker - Finished Payload', 13, 10, '========================================', 13, 10, 0
+msg_payload_start:	db '========================================', 13, 10, 'BareMetal Firecracker - Starting Payload', 13, 10, '========================================', 13, 10, 0
+msg_payload_end:	db '========================================', 13, 10, 'BareMetal Firecracker - Finished Payload', 13, 10, '========================================', 13, 10, 0
 app_start:		dq 0xFFFF800000000000
 
 ; Memory addresses
@@ -57,6 +57,9 @@ os_rx_buffer:		equ 0x0000000000140000	; 0x140000 -> 0x1C0000	512K Ethernet recei
 
 						; 0x1E0000 -> 0x1EFFFF	64K Monitor (free if not used)
 
+; Vectors
+TIMER_VECTOR		equ 0x22		; Interrupt vector used for the LAPIC timer
+
 
 ; System Variables
 
@@ -72,6 +75,7 @@ sys_delay:		equ os_SystemVariables + 0x0048
 os_NetworkCallback:	equ os_SystemVariables + 0x0060
 os_KeyboardCallback:	equ os_SystemVariables + 0x0068
 os_ClockCallback:	equ os_SystemVariables + 0x0070
+os_TimerCallback:	equ os_SystemVariables + 0x0078
 os_virtionet_base:	equ os_SystemVariables + 0x00A0
 os_virtioblk_base:	equ os_SystemVariables + 0x00A8
 os_nvs_io:		equ os_SystemVariables + 0x00B0
