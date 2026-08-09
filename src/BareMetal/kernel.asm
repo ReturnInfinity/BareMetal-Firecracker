@@ -51,20 +51,6 @@ start:
 	; Enable interrupts on BSP
 	sti
 
-	; Debug code
-	; Test 10 second delay
-;	call kvm_ns
-;	call os_debug_dump_rax
-;	call os_debug_newline
-	mov rax, 10000000000		; 10 seconds
-	call b_sleep
-;	call os_apic_timer_set
-;	hlt
-;	call kvm_ns
-;	call os_debug_dump_rax
-;	call os_debug_newline
-
-
 	; Check payload
 	cmp dword [os_MemAmount], 0	; Check for existence of App RAM
 	je start_monitor
