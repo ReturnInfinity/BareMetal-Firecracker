@@ -60,6 +60,7 @@ u64 b_system(u64 function, u64 var1, u64 var2);
 #define DUMP_MEM		0x70
 #define DUMP_RAX		0x71
 #define DELAY			0x72
+#define SLEEP			0x73
 #define RESET			0x7D
 #define REBOOT			0x7E
 #define SHUTDOWN		0x7F

@@ -102,6 +102,10 @@ b_system_delay:
 	call [sys_delay]
 	ret
 
+b_system_sleep:
+	call b_sleep
+	ret
+
 b_system_reboot:
 	call reboot
 
@@ -137,6 +141,32 @@ b_tsc:
 	shl rdx, 32			; Shift the low 32-bits to the high 32-bits
 	or rax, rdx			; Combine RAX and RDX
 	pop rdx
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; b_sleep -- Sleep for X nanoseconds
+; IN:	RAX = Time in nanoseconds
+; OUT:	Nothing
+b_sleep:
+	push rax
+	push rbx
+
+	mov rbx, rax			; Save sleep nanoseconds
+
+	call os_apic_timer_set		; Set the APIC to fire an interrupt X nanoseconds from now
+	call kvm_ns			; Get current nanoseconds since startup
+	add rbx, rax			; Add current nanoseconds to sleep nanoseconds
+
+b_sleep_snooze:
+	hlt				; Halt the CPU until an interrupt is received
+	call kvm_ns			; If awoken get current nanoseconds
+	cmp rax, rbx			; Compare current to sleep
+	jb b_sleep_snooze		; If current is below then "hit the snooze button"
+
+	pop rbx
+	pop rax
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -324,7 +354,7 @@ b_system_table:
 	dw b_system_debug_dump_mem	; 0x70
 	dw b_system_debug_dump_rax	; 0x71
 	dw b_system_delay		; 0x72
-	dw none				; 0x73
+	dw b_system_sleep		; 0x73
 	dw none				; 0x74
 	dw none				; 0x75
 	dw none				; 0x76
