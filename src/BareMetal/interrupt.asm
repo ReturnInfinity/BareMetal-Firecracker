@@ -48,6 +48,30 @@ int_keyboard:
 
 
 ; -----------------------------------------------------------------------------
+; LAPIC timer interrupt. IRQ N/A, INT 0x22
+; Fires once at the deadline programmed via os_apic_timer_arm
+align 8
+int_apic_timer:
+	push rcx
+	push rax
+
+	cmp qword [os_TimerCallback], 0	; Callback set?
+	je int_apic_timer_skip		; If not, skip
+	call [os_TimerCallback]		; Otherwise call it
+int_apic_timer_skip:
+
+	; Acknowledge the IRQ
+	mov ecx, APIC_EOI
+	xor eax, eax
+	call os_apic_write
+
+	pop rax
+	pop rcx
+	iretq
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
 ; Serial interrupt. IRQ 0x04, INT 0x24
 ; This IRQ runs whenever there is input on the serial port
 align 8

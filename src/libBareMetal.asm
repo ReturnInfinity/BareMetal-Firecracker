@@ -47,6 +47,7 @@ CALLBACK_KEYBOARD	equ 0x62
 DUMP_MEM		equ 0x70
 DUMP_RAX		equ 0x71
 DELAY			equ 0x72	; Delay by # microseconds
+SLEEP			equ 0x73	; Sleep by # nanoseconds
 RESET			equ 0x7D
 REBOOT			equ 0x7E
 SHUTDOWN		equ 0x7F

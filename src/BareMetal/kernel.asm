@@ -42,12 +42,14 @@ start:
 	call init_hid			; Initialize human interface devices
 	call init_sys			; Initialize system
 
-	sti
 	; Set the stack
 	mov rax, [os_StackBase]		; The stack decrements when you "push", start at 64 KiB in
 	add rax, 65536			; 64 KiB Stack
 	mov rsp, rax
 	mov rbp, rax
+
+	; Enable interrupts on BSP
+	sti
 
 	; Check payload
 	cmp dword [os_MemAmount], 0	; Check for existence of App RAM
