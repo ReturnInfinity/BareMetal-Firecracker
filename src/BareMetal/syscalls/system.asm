@@ -152,19 +152,27 @@ b_tsc:
 b_sleep:
 	push rax
 	push rbx
+	push rcx
 
 	mov rbx, rax			; Save sleep nanoseconds
-
-	call os_apic_timer_set		; Set the APIC to fire an interrupt X nanoseconds from now
 	call kvm_ns			; Get current nanoseconds since startup
-	add rbx, rax			; Add current nanoseconds to sleep nanoseconds
+	add rbx, rax			; RBX = target deadline (now + sleep nanoseconds)
 
 b_sleep_snooze:
-	hlt				; Halt the CPU until an interrupt is received
-	call kvm_ns			; If awoken get current nanoseconds
-	cmp rax, rbx			; Compare current to sleep
-	jb b_sleep_snooze		; If current is below then "hit the snooze button"
+	call kvm_ns			; RAX = current nanoseconds since startup
+	cmp rax, rbx			; Reached (or passed) the deadline?
+	jae b_sleep_done		; If so, bail out
 
+	mov rcx, rbx			; Calculate remaining nanoseconds
+	sub rcx, rax			; RCX = remaining nanoseconds
+	mov rax, rcx
+	call os_apic_timer_set		; Set the APIC to fire an interrupt X nanoseconds from now
+
+	hlt				; Halt the CPU until an interrupt is received
+	jmp b_sleep_snooze
+
+b_sleep_done:
+	pop rcx
 	pop rbx
 	pop rax
 	ret
