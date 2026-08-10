@@ -151,15 +151,22 @@ kvm_get_usec_shift_done:
 
 
 ; -----------------------------------------------------------------------------
-; kvm_get_walltime -- Returns the wall-clock time KVM recorded at boot
+; kvm_get_walltime -- Returns the current wall-clock time
 ; IN:	Nothing
 ; OUT:	RAX = Seconds since the Unix epoch (January 1, 1970, at 00:00:00 UTC)
 ;	RDX = Nanoseconds (0 - 999999999)
 ;	All other registers preserved
+; Note:	The kvm_wallclock struct only holds the wall-clock time KVM
+;	recorded when the guest booted (i.e. the wall-clock time that
+;	corresponds to system_time == 0), per the pvclock wall-clock
+;	ABI - it is written once at init and never updated again. The
+;	current time is that boot-time snapshot plus the guest's
+;	elapsed system_time - kvm_ns().
 kvm_get_walltime:
 	push r10
 	push rcx
 	push rdi
+	push rbx
 
 	mov rdi, kvm_wallclock
 kvm_get_walltime_wait:
@@ -169,8 +176,8 @@ kvm_get_walltime_wait:
 
 	lfence
 
-	mov eax, [rdi+0x04]		; 32-bit sec
-	mov edx, [rdi+0x08]		; 32-bit nsec
+	mov eax, [rdi+0x04]		; 32-bit seconds
+	mov edx, [rdi+0x08]		; 32-bit nanoseconds
 
 	; Recheck struct version
 	lfence
@@ -178,6 +185,19 @@ kvm_get_walltime_wait:
 	cmp r10d, ecx			; Compare to first version read
 	jne kvm_get_walltime_wait	; If not equal then an update occured, restart
 
+	; EAX:EDX hold the boot-time wall clock (sec:nsec). Add elapsed
+	; guest time to get the live wall-clock time.
+	mov ebx, eax			; RBX = boot-time seconds
+	push rdx			; Save boot-time nanoseconds
+	call kvm_ns			; RAX = nanoseconds elapsed since boot
+	pop rdx
+	add rax, rdx			; RAX = boot nanoseconds + elapsed nanoseconds
+	xor edx, edx
+	mov ecx, 1000000000
+	div rcx				; RAX = extra whole seconds, RDX = current nanoseconds
+	add rax, rbx			; RAX = current seconds since epoch
+
+	pop rbx
 	pop rdi
 	pop rcx
 	pop r10
