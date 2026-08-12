@@ -89,8 +89,8 @@ make_interrupt_gate_stubs:
 	; Initialize the I/O APIC
 	call os_ioapic_init
 
-	; Initialize the timer
-	call os_timer_init
+	; Initialize the clock
+	call os_clock_init
 
 %ifdef DEBUG
 	; Output progress via serial

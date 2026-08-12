@@ -2,61 +2,61 @@
 ; BareMetal -- a 64-bit OS written in Assembly for x86-64 systems
 ; Copyright (C) 2008-2026 Return Infinity -- see LICENSE.TXT
 ;
-; Timer Functions
+; Clock Functions
 ; =============================================================================
 
 
 ; -----------------------------------------------------------------------------
-; os_timer_init -- Initialize timer
-os_timer_init:
-	; Check for hypervisor presence
+; os_clock_init -- Initialize clock
+os_clock_init:
+;	; Check for hypervisor presence
 ;	mov eax, 1
 ;	cpuid
 ;	bt ecx, 31			; HV - hypervisor present
-;	jnc os_timer_init_error		; If bit is clear then jump to phys init
+;	jnc os_clock_init_error		; If bit is clear then jump to phys init
 ;
 ;	; Check for hypervisor type
 ;	mov eax, 0x40000000
 ;	cpuid
 ;	cmp ebx, 0x4B4D564B		; KMVK - KVM
-;	jne os_timer_init_error		; KVM detected? Then initialize KVM timer
+;	jne os_clock_init_error		; KVM detected? Then initialize KVM clock
 
 	; Initialize the KVM timer
-	call init_timer_kvm
+	call os_clock_init_kvm
 	mov qword [sys_timer], kvm_ns
 	mov qword [sys_delay], kvm_delay
-	jmp os_timer_init_done
+	jmp os_clock_init_done
 
-os_timer_init_error:
-	jmp $				; Spin forever as there was no timer source
+os_clock_init_error:
+	jmp $				; Spin forever as there was no clock source
 
-os_timer_init_done:
+os_clock_init_done:
 	ret
 ; -----------------------------------------------------------------------------
 
 
 ; -----------------------------------------------------------------------------
-; init_timer_kvm - Initialize the KVM timer
-init_timer_kvm:
+; init_clock_kvm - Initialize the KVM timer
+os_clock_init_kvm:
 	; Check hypervisor feature bits
 	mov eax, 0x40000001
 	cpuid
 	bt eax, 3
-	jc init_timer_kvm_clocksource2
+	jc os_clock_init_kvm_clocksource2
 	bt eax, 0
-	jc init_timer_kvm_clocksource
-	jmp $
+	jc os_clock_init_kvm_clocksource
+	jmp $				; Spin forever as there was no clock source
 
-init_timer_kvm_clocksource2:
+os_clock_init_kvm_clocksource2:
 	mov ecx, MSR_KVM_SYSTEM_TIME_NEW
 	mov ebx, MSR_KVM_WALL_CLOCK_NEW
-	jmp init_timer_kvm_configure
+	jmp os_clock_init_kvm_configure
 
-init_timer_kvm_clocksource:
+os_clock_init_kvm_clocksource:
 	mov ecx, MSR_KVM_SYSTEM_TIME
 	mov ebx, MSR_KVM_WALL_CLOCK
 
-init_timer_kvm_configure:
+os_clock_init_kvm_configure:
 	xor edx, edx
 	mov eax, kvm_timer		; Memory address for structure
 	bts eax, 0			; Enable bit
