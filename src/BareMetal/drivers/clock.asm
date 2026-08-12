@@ -36,7 +36,7 @@ os_clock_init_done:
 
 
 ; -----------------------------------------------------------------------------
-; init_clock_kvm - Initialize the KVM timer
+; init_clock_kvm - Initialize the KVM clock
 os_clock_init_kvm:
 	; Check hypervisor feature bits
 	mov eax, 0x40000001
@@ -66,86 +66,6 @@ os_clock_init_kvm_configure:
 	mov eax, kvm_wallclock		; Memory address for structure
 	wrmsr
 
-	ret
-; -----------------------------------------------------------------------------
-
-
-; -----------------------------------------------------------------------------
-; kvm_get_usec -- Returns # of microseconds elapsed since guest start
-; IN:	Nothing
-; OUT:	RAX = microseconds elapsed since start
-;	All other registers preserved
-kvm_get_usec:
-	push r10
-	push r9
-	push rdi
-	push rdx
-	push rcx
-	push rbx
-
-	mov rdi, kvm_timer
-kvm_get_usec_wait:
-	mov r10d, [rdi]			; Get 32-bit version
-	test r10d, 1			; Check if version is odd (update in progress)
-	jnz kvm_get_usec_wait		; If so, retry
-
-	lfence
-
-	rdtsc				; Read CPU TSC into EDX:EAX
-	shl rdx, 32
-	or rax, rdx			; Combine EDX:EAX into RAX
-	mov r9, rax			; Save the 64-bit TSC value
-
-	; Load KVM timer data
-	mov rax, [rdi+0x08]		; 64-bit tsc_timestamp
-	mov rbx, [rdi+0x10]		; 64-bit system_time
-	mov ecx, [rdi+0x18]		; 32-bit tsc_to_system_mul
-	push rcx			; Save tsc_to_system_mul to stack
-	xor ecx, ecx
-	mov cl, [rdi+0x1C]		; 8-bit tsc_shift
-
-	; Calculate timer delta (CPU TSC - tsc_timestamp)
-	sub r9, rax
-	mov rax, r9
-
-	; Apply tsc_shift
-	cmp cl, 0
-	jl kvm_get_usec_shift_right	; Signed comparison
-	shl rax, cl
-	jmp kvm_get_usec_shift_done
-kvm_get_usec_shift_right:
-	neg cl				; Ex: 0xFF = tsc shift of -1
-	shr rax, cl
-kvm_get_usec_shift_done:
-
-	pop rcx				; Restore tsc_to_system_mul
-
-	; Calculate nanoseconds as (delta * mul) >> 32
-	mul rcx				; RDX:RAX = RAX * RCX
-	shl rdx, 32
-	shr rax, 32
-	or rax, rdx
-
-	; Add system time to nanoseconds
-	add rax, rbx
-
-	; Recheck struct version
-	lfence
-	mov ecx, [rdi]			; Load 32-bit version
-	cmp r10d, ecx			; Compare to first version read
-	jne kvm_get_usec_wait		; If not equal then an update occured, restart
-
-	; Convert nanoseconds to microseconds
-	xor edx, edx
-	mov ecx, 1000
-	div rcx
-
-	pop rbx
-	pop rcx
-	pop rdx
-	pop rdi
-	pop r9
-	pop r10
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -245,7 +165,7 @@ kvm_ns_wait:
 
 	; Apply tsc_shift
 	cmp cl, 0
-	jl kvm_ns_shift_right	; Signed comparison
+	jl kvm_ns_shift_right		; Signed comparison
 	shl rax, cl
 	jmp kvm_ns_shift_done
 kvm_ns_shift_right:
@@ -281,20 +201,16 @@ kvm_ns_shift_done:
 
 
 ; -----------------------------------------------------------------------------
-; kvm_delay -- Delay by X microseconds
-; IN:	RAX = Time microseconds
+; kvm_delay -- Delay by X nanoseconds
+; IN:	RAX = Time in nanoseconds
 ; OUT:	All registers preserved
-; Note:	There are 1,000,000 microseconds in a second
+; Note:	There are 1,000,000,000 nanoseconds in a second
+;	There are 1,000,000 microseconds in a second
 ;	There are 1,000 milliseconds in a second
 kvm_delay:
 	push rdx
-	push rcx
 	push rbx
 	push rax
-
-	; Multiply time by 1000 to convert to nanoseconds
-	mov ecx, 1000
-	mul rcx				; RDX:RAX = RAX * RCX
 
 	mov rbx, rax			; Store delay in RBX
 	call kvm_ns
@@ -306,7 +222,6 @@ kvm_delay_wait:
 
 	pop rax
 	pop rbx
-	pop rcx
 	pop rdx
 	ret
 ; -----------------------------------------------------------------------------

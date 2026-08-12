@@ -10,7 +10,7 @@
 init_sys:
 
 	; Gather boot time
-	call kvm_get_usec
+	call kvm_ns
 	mov [os_boot_time], rax		; Store the boot time in os_boot_time
 
 %ifdef DEBUG
