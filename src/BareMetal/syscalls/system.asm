@@ -87,6 +87,10 @@ b_system_callback_network:
 b_system_callback_keyboard:
 	ret
 
+b_system_timer_set:
+	call os_apic_timer_set
+	ret
+
 b_system_debug_dump_mem:
 	push rsi
 	mov rsi, rax
@@ -360,7 +364,7 @@ b_system_table:
 	dw none				; 0x65
 	dw none				; 0x66
 	dw none				; 0x67
-	dw none				; 0x68
+	dw b_system_timer_set		; 0x68
 	dw none				; 0x69
 	dw none				; 0x6A
 	dw none				; 0x6B
