@@ -76,6 +76,8 @@ os_NetworkCallback:	equ os_SystemVariables + 0x0060
 os_KeyboardCallback:	equ os_SystemVariables + 0x0068
 os_ClockCallback:	equ os_SystemVariables + 0x0070
 os_TimerCallback:	equ os_SystemVariables + 0x0078
+os_apic_timer_freq:	equ os_SystemVariables + 0x0080	; LAPIC timer ticks per millisecond
+os_ticks:		equ os_SystemVariables + 0x0088	; Free-running count of scheduler tick interrupts
 os_virtionet_base:	equ os_SystemVariables + 0x00A0
 os_virtioblk_base:	equ os_SystemVariables + 0x00A8
 os_nvs_io:		equ os_SystemVariables + 0x00B0

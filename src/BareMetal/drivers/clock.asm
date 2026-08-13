@@ -213,7 +213,7 @@ kvm_delay:
 	push rax
 
 	mov rbx, rax			; Store delay in RBX
-	call kvm_ns
+	call kvm_ns			; Get current
 	add rbx, rax			; Add elapsed time
 kvm_delay_wait:
 	call kvm_ns

@@ -49,15 +49,28 @@ int_keyboard:
 
 ; -----------------------------------------------------------------------------
 ; LAPIC timer interrupt. IRQ N/A, INT 0x22
-; Fires once at the deadline programmed via os_apic_timer_arm
+; Fires periodically as the scheduler tick (os_apic_timer_periodic_set)
 align 8
 int_apic_timer:
 	push rcx
 	push rax
 
+	inc qword [os_ticks]
+
+; Debug - Display 01 every X ticks
+	mov rax, [os_ticks]
+	test rax, 0x3FF			; Only print about once a second (every 1024 ticks @ 1000Hz)
+	jnz int_apic_timer_debug_skip
+	mov al, 01
+	call os_debug_dump_al
+int_apic_timer_debug_skip:
+
 	cmp qword [os_TimerCallback], 0	; Callback set?
 	je int_apic_timer_skip		; If not, skip
+
+; TODO - Stack shenanigans
 	call [os_TimerCallback]		; Otherwise call it
+
 int_apic_timer_skip:
 
 	; Acknowledge the IRQ
