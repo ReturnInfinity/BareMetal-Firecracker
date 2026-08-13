@@ -23,8 +23,9 @@ init_sys:
 ; Debug
 ; TODO - Set as system call to enable
 	; Start the periodic timer
-	mov rax, SCHED_TICK_PERIOD_NS
-	call os_apic_timer_set
+	mov rax, 1000000		; 1,000,000 ns = 1ms (1000Hz)
+	mov ecx, 0x68
+	call b_system;call os_apic_timer_set
 
 ; Debug - test callback
 	mov rax, sys_debug_callback

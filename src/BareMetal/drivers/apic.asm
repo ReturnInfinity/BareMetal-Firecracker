@@ -120,6 +120,8 @@ os_apic_timer_set:
 	push rcx
 	push rbx
 
+	mov [os_apic_timer_period], rax	; Save the period value
+
 	test rax, rax
 	jz os_apic_timer_set_clear
 
@@ -194,9 +196,6 @@ APIC_LVT_MASKED		equ 0x10000
 
 ; Divide Configuration Register value (APIC_TMRDIV)
 APIC_TMRDIV_1		equ 0xB		; Divide by 1 (maximum resolution) - bits [3,1,0]=111, bit 2 reserved as 0
-
-; Scheduler tick
-SCHED_TICK_PERIOD_NS	equ 1000000	; 1,000,000 ns = 1ms (1000Hz)
 
 
 ; =============================================================================

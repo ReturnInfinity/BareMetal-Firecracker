@@ -152,19 +152,20 @@ b_tsc:
 
 ; -----------------------------------------------------------------------------
 ; b_sleep -- Sleep for X nanoseconds
-; IN:	RAX = Time in nanoseconds
+; IN:	RAX = Number of nanoseconds
 ; OUT:	Nothing
-; Note:	Resolution is limited to the scheduler tick period (SCHED_TICK_PERIOD_NS)
-;	since this waits on the os_ticks counter
+; Note:	Resolution is limited to the APIC tick period since this waits on the os_ticks counter
 b_sleep:
 	push rax
 	push rbx
 	push rcx
 	push rdx
 
-	; Convert the requested nanosecond delay to a whole number of scheduler
+	; Convert the requested nanosecond delay to a whole number of APIC
 	; ticks, rounding up so the sleep never returns early
-	mov rcx, SCHED_TICK_PERIOD_NS
+	mov rcx, [os_apic_timer_period]
+	cmp rcx, 0
+	jz b_sleep_done
 	dec rcx
 	add rax, rcx			; RAX = ns + (period - 1)
 	inc rcx				; RCX = period (restored)
