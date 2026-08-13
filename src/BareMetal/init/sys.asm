@@ -26,6 +26,11 @@ init_sys:
 	mov rax, SCHED_TICK_PERIOD_NS
 	call os_apic_timer_set
 
+; Debug - test callback
+	mov rax, sys_debug_callback
+	mov ecx, 0x60
+	call b_system
+
 %ifdef DEBUG
 	; Output progress via serial
 	mov esi, msg_ready
@@ -35,6 +40,19 @@ init_sys:
 	ret
 ; -----------------------------------------------------------------------------
 
+sys_debug_callback:
+	push rax
+
+; Debug - Display 01 every X ticks
+	mov rax, [os_ticks]
+	test rax, 0x3FF			; Only print about once a second (every 1024 ticks @ 1000Hz)
+	jnz int_apic_timer_debug_skip
+	mov al, 01
+	call os_debug_dump_al
+int_apic_timer_debug_skip:
+
+	pop rax
+	ret
 
 ; =============================================================================
 ; EOF

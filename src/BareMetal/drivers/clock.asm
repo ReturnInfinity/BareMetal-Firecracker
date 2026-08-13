@@ -9,19 +9,6 @@
 ; -----------------------------------------------------------------------------
 ; os_clock_init -- Initialize clock
 os_clock_init:
-;	; Check for hypervisor presence
-;	mov eax, 1
-;	cpuid
-;	bt ecx, 31			; HV - hypervisor present
-;	jnc os_clock_init_error		; If bit is clear then jump to phys init
-;
-;	; Check for hypervisor type
-;	mov eax, 0x40000000
-;	cpuid
-;	cmp ebx, 0x4B4D564B		; KMVK - KVM
-;	jne os_clock_init_error		; KVM detected? Then initialize KVM clock
-
-	; Initialize the KVM timer
 	call os_clock_init_kvm
 	mov qword [sys_timer], kvm_ns
 	mov qword [sys_delay], kvm_delay

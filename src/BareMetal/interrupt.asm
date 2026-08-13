@@ -57,21 +57,48 @@ int_apic_timer:
 
 	inc qword [os_ticks]
 
-; Debug - Display 01 every X ticks
-	mov rax, [os_ticks]
-	test rax, 0x3FF			; Only print about once a second (every 1024 ticks @ 1000Hz)
-	jnz int_apic_timer_debug_skip
-	mov al, 01
-	call os_debug_dump_al
-int_apic_timer_debug_skip:
-
 	cmp qword [os_TimerCallback], 0	; Callback set?
-	je int_apic_timer_skip		; If not, skip
+	je int_apic_timer_end		; If not then jump to end
 
-; TODO - Stack shenanigans
-	call [os_TimerCallback]		; Otherwise call it
+	; We could do a 'call [os_TimerCallback]' here but that would not be ideal.
+	; A defective callback would hang the system if it never returned back to the
+	; interrupt handler. Instead, we modify the stack so that the callback is
+	; executed after the interrupt handler has finished. Once the callback has
+	; finished, the execution flow will pick up back in the program.
+	; Before          After
+	; -----------------------------------
+	;                 RSP -> RAX
+	; RSP -> RAX             RCX
+	;        RCX             RIP Callback
+	;        RIP             CS
+	;        CS              RFLAGS (Original minus 8)
+	;        RFLAGS          RSP
+	;        RSP             SS
+	;        SS              RIP Original
+	push rdi
+	push rsi
+	mov rcx, [os_TimerCallback]	; RCX stores the callback function address
+	mov rsi, rsp			; Copy the current stack pointer to RSI
+	sub rsp, 8			; Subtract 8 since we add a 64-bit value to the stack
+	mov rdi, rsp			; Copy the 'new' stack pointer to RDI
+	movsq				; RSI
+	movsq				; RDI
+	movsq				; RAX
+	movsq				; RCX
+	lodsq				; RIP
+	xchg rax, rcx
+	stosq				; Callback address
+	movsq				; CS
+	movsq				; Flags
+	lodsq				; RSP
+	sub rax, 8
+	stosq
+	movsq				; SS
+	mov [rax], rcx			; Original RIP
+	pop rsi
+	pop rdi
 
-int_apic_timer_skip:
+int_apic_timer_end:
 
 	; Acknowledge the IRQ
 	mov ecx, APIC_EOI

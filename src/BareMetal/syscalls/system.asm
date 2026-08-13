@@ -151,7 +151,7 @@ b_tsc:
 ; IN:	RAX = Time in nanoseconds
 ; OUT:	Nothing
 ; Note:	Resolution is limited to the scheduler tick period (SCHED_TICK_PERIOD_NS)
-;	since this waits on the os_ticks counter rather than arming a precise deadline
+;	since this waits on the os_ticks counter
 b_sleep:
 	push rax
 	push rbx
