@@ -78,12 +78,17 @@ b_system_stdout_set:
 ; Misc
 
 b_system_callback_timer:
+	mov qword [os_TimerCallback], rax
 	ret
 
 b_system_callback_network:
 	ret
 
 b_system_callback_keyboard:
+	ret
+
+b_system_timer_set:
+	call os_apic_timer_set
 	ret
 
 b_system_debug_dump_mem:
@@ -147,31 +152,42 @@ b_tsc:
 
 ; -----------------------------------------------------------------------------
 ; b_sleep -- Sleep for X nanoseconds
-; IN:	RAX = Time in nanoseconds
+; IN:	RAX = Number of nanoseconds
 ; OUT:	Nothing
+; Note:	Resolution is limited to the APIC tick period since this waits on the os_ticks counter
 b_sleep:
 	push rax
 	push rbx
 	push rcx
+	push rdx
 
-	mov rbx, rax			; Save sleep nanoseconds
-	call kvm_ns			; Get current nanoseconds since startup
-	add rbx, rax			; RBX = target deadline (now + sleep nanoseconds)
+	; Convert the requested nanosecond delay to a whole number of APIC
+	; ticks, rounding up so the sleep never returns early
+	mov rcx, [os_apic_timer_period]
+	cmp rcx, 0
+	jz b_sleep_done
+	dec rcx
+	add rax, rcx			; RAX = ns + (period - 1)
+	inc rcx				; RCX = period (restored)
+	xor rdx, rdx
+	div rcx				; RAX = ceil(ns / period) ticks
+	test rax, rax
+	jnz b_sleep_have_ticks
+	inc rax				; Always wait at least 1 tick
+b_sleep_have_ticks:
+
+	mov rbx, [os_ticks]
+	add rbx, rax			; RBX = target tick count
 
 b_sleep_snooze:
-	call kvm_ns			; RAX = current nanoseconds since startup
-	cmp rax, rbx			; Reached (or passed) the deadline?
+	cmp qword [os_ticks], rbx	; Reached (or passed) the target tick?
 	jae b_sleep_done		; If so, bail out
 
-	mov rcx, rbx			; Calculate remaining nanoseconds
-	sub rcx, rax			; RCX = remaining nanoseconds
-	mov rax, rcx
-	call os_apic_timer_set		; Set the APIC to fire an interrupt X nanoseconds from now
-
-	hlt				; Halt the CPU until an interrupt is received
+	hlt				; Halt the CPU until the next tick interrupt
 	jmp b_sleep_snooze
 
 b_sleep_done:
+	pop rdx
 	pop rcx
 	pop rbx
 	pop rax
@@ -349,7 +365,7 @@ b_system_table:
 	dw none				; 0x65
 	dw none				; 0x66
 	dw none				; 0x67
-	dw none				; 0x68
+	dw b_system_timer_set		; 0x68
 	dw none				; 0x69
 	dw none				; 0x6A
 	dw none				; 0x6B

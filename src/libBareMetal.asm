@@ -22,28 +22,17 @@ b_system		equ 0x0000000000100040	; Configure system. IN: RCX = Function, RAX = V
 TIMECOUNTER		equ 0x00	; Return # of nanoseconds elapsed since startup
 FREE_MEMORY		equ 0x01
 WALLCLOCK		equ 0x02
-SMP_ID			equ 0x10
-SMP_NUMCORES		equ 0x11
-SMP_SET			equ 0x12
-SMP_GET			equ 0x13
-SMP_LOCK		equ 0x14
-SMP_UNLOCK		equ 0x15
-SMP_BUSY		equ 0x16
 TSC			equ 0x1F
-SCREEN_LFB_GET		equ 0x20
-SCREEN_X_GET		equ 0x21
-SCREEN_Y_GET		equ 0x22
-SCREEN_PPSL_GET		equ 0x23
-SCREEN_BPP_GET		equ 0x24
 NET_STATUS		equ 0x30
 NET_CONFIG		equ 0x31
 BUS_READ		equ 0x50
 BUS_WRITE		equ 0x51
 STDOUT_SET		equ 0x52
 STDOUT_GET		equ 0x53
-CALLBACK_TIMER		equ 0x60
+CALLBACK_TIMER		equ 0x60	; Configure timer interrupt callback
 CALLBACK_NETWORK	equ 0x61
 CALLBACK_KEYBOARD	equ 0x62
+TIMER_SET		equ 0x68	; Configure timer to execute every X nanoseconds
 DUMP_MEM		equ 0x70
 DUMP_RAX		equ 0x71
 DELAY			equ 0x72	; Delay by # microseconds

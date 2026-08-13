@@ -11,7 +11,7 @@
 %include "drivers/ioapic.asm"
 %include "drivers/ps2.asm"
 %include "drivers/serial.asm"
-%include "drivers/timer.asm"
+%include "drivers/clock.asm"
 
 ; Bus
 %include "drivers/bus/virtio-mmio.asm"

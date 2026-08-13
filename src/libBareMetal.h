@@ -35,19 +35,7 @@ u64 b_system(u64 function, u64 var1, u64 var2);
 #define TIMECOUNTER		0x00
 #define FREE_MEMORY		0x01
 #define WALLCLOCK		0x02
-#define SMP_ID			0x10
-#define SMP_NUMCORES		0x11
-#define SMP_SET			0x12
-#define SMP_GET			0x13
-#define SMP_LOCK		0x14
-#define SMP_UNLOCK		0x15
-#define SMP_BUSY		0x16
 #define TSC			0x1F
-#define SCREEN_LFB_GET		0x20
-#define SCREEN_X_GET		0x21
-#define SCREEN_Y_GET		0x22
-#define SCREEN_PPSL_GET		0x23
-#define SCREEN_BPP_GET		0x24
 #define NET_STATUS		0x30
 #define NET_CONFIG		0x31
 #define BUS_READ		0x50
@@ -57,6 +45,7 @@ u64 b_system(u64 function, u64 var1, u64 var2);
 #define CALLBACK_TIMER		0x60
 #define CALLBACK_NETWORK	0x61
 #define CALLBACK_KEYBOARD	0x62
+#define TIMER_SET		0x68
 #define DUMP_MEM		0x70
 #define DUMP_RAX		0x71
 #define DELAY			0x72
