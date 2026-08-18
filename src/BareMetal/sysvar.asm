@@ -83,6 +83,7 @@ os_virtionet_base:	equ os_SystemVariables + 0x00A0
 os_virtioblk_base:	equ os_SystemVariables + 0x00A8
 os_nvs_io:		equ os_SystemVariables + 0x00B0
 os_nvs_id:		equ os_SystemVariables + 0x00B8
+os_virtiomem_base:	equ os_SystemVariables + 0x00C0
 
 ; DD - Starting at offset 256, increments by 4
 os_MemAmount:		equ os_SystemVariables + 0x0104	; in MiB

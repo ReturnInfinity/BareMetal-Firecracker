@@ -9,6 +9,9 @@
 ; -----------------------------------------------------------------------------
 init_sys:
 
+	; Firecracker
+	call mem_virtio_mmio_init
+
 	; Gather boot time
 	call kvm_ns
 	xor edx, edx

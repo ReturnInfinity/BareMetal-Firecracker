@@ -22,6 +22,8 @@
 ; Network
 %include "drivers/net/virtio-net-mmio.asm"
 
+; Memory
+%include "drivers/mem/virtio-mem-mmio.asm"
 
 ; =============================================================================
 ; EOF

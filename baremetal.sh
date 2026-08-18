@@ -27,11 +27,17 @@ set -eu
 
 SOCKET=/tmp/firecracker.socket
 KERNEL="$PWD/sys/baremetal.elf"
+CPUCOUNT=1
+MEMSIZE=32
 DISK="$PWD/disk.img"
 SESSION=fc-vm
 FCLOG="/tmp/fc.log"
 VMLOG=/tmp/fc-vm.log
 VMLOGPOS=/tmp/fc-vm.log.pos
+MEMHOTPLUG_EN=1
+MEMHOTPLUG_MAX=1024
+MEMHOTPLUG_BLOCK=2
+MEMHOTPLUG_SLOT=128	# 128MiB is the minimum for KVM
 
 # Prepare arguments
 cmd="${1:-}" # first argument is the subcommand (default: empty)
@@ -71,7 +77,12 @@ case "$cmd" in
 		# Set Firecracker CPU and MEM
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/machine-config' \
 			-H 'Content-Type: application/json' \
-			-d '{ "vcpu_count": 1, "mem_size_mib": 4 }' > /dev/null
+			-d "{ \"vcpu_count\": $CPUCOUNT, \"mem_size_mib\": $MEMSIZE }" > /dev/null
+
+		# Set Firecracker hotplug memory
+		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/hotplug/memory' \
+			-H 'Content-Type: application/json' \
+			-d "{ \"total_size_mib\": $MEMHOTPLUG_MAX, \"block_size_mib\": $MEMHOTPLUG_BLOCK, \"slot_size_mib\": $MEMHOTPLUG_SLOT }" > /dev/null
 
 		# Set Firecracker network
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/network-interfaces/eth0' \
