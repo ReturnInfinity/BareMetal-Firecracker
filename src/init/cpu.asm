@@ -52,6 +52,19 @@ init_cpu:
 	bts rax, 10			; Set Operating System Support for Unmasked SIMD Floating-Point Exceptions (Bit 10)
 	mov cr4, rax
 
+	; Enable FSGSBASE (RDFSBASE/WRFSBASE/RDGSBASE/WRGSBASE at any privilege
+	; level) - the app runs in ring 3 and needs WRFSBASE to set its own TLS
+	; pointer without a WRMSR, which is supervisor-only.
+	mov eax, 7			; https://www.sandpile.org/x86/cpuid.htm#leaf_0000_0007h
+	xor ecx, ecx			; Query sub-leaf 0
+	cpuid
+	bt ebx, 0			; CR4.FSGSBASE is supported if bit 0 is set in EBX
+	jnc fsgsbase_not_supported	; Bail out..
+	mov rax, cr4
+	bts rax, 16			; Set FSGSBASE (Bit 16)
+	mov cr4, rax
+fsgsbase_not_supported:
+
 	; Enable Math Co-processor
 	finit
 

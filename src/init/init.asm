@@ -269,7 +269,7 @@ parse_done:
 	mov eax, 0x00003003		; Bits 0 (P), 1 (R/W), location of low PDP (4KiB aligned)
 	stosq
 	mov edi, 0x00002800		; Create a PML4 entry for higher half (starting at 0xFFFF800000000000)
-	mov eax, 0x00004003		; Bits 0 (P), 1 (R/W), location of high PDP (4KiB aligned)
+	mov eax, 0x00004007		; Bits 0 (P), 1 (R/W), 2 (U/S - app runs in ring 3), location of high PDP (4KiB aligned)
 	stosq
 
 ; 2MiB Pages
@@ -460,7 +460,7 @@ memmap_saniend:
 	shr ecx, 10			; MBs -> GBs
 	add rcx, 1			; Add 1. This is the number of PDPE's to make
 	mov edi, 0x00004000		; location of high PDPE
-	mov eax, 0x00020003		; location of first high PD. Bits 0 (P) and 1 (R/W) set
+	mov eax, 0x00020007		; location of first high PD. Bits 0 (P), 1 (R/W), 2 (U/S) set
 create_pdpe_high:
 	stosq
 	add rax, 0x00001000		; 4K later (512 records x 8 bytes)
@@ -480,7 +480,7 @@ pde_next_range:
 	cmp rax, 0			; Check if at end of records
 	je pde_end			; Bail out if so
 	shr ecx, 1			; Quick divide by 2 for 2 MB pages
-	add rax, 0x00000083		; Bits 0 (P), 1 (R/W), and 7 (PS) set
+	add rax, 0x00000087		; Bits 0 (P), 1 (R/W), 2 (U/S - app runs in ring 3), and 7 (PS) set
 pde_high:				; Create a 2MiB page
 	stosq
 	add rax, 0x00200000		; Increment by 2MiB
@@ -609,6 +609,8 @@ sys_pdph:		equ 0x0000000000004000	; 0x004000 -> 0x004FFF	4K PDP table high
 
 SystemVariables:	equ 0x0000000000005800
 
+sys_tss:		equ 0x0000000000005F00	; 104 byte Task State Segment (RSP0 for ring 3 -> ring 0 transitions)
+
 ; DQ - Starting at offset 0, increments by 0x8
 p_LocalAPICAddress:	equ SystemVariables + 0x10	; Address of the Local APIC (xAPIC)
 sys_timer:		equ SystemVariables + 0x30
@@ -666,6 +668,13 @@ SYS64_CODE_SEL equ $-gdt64		; Code segment, read/execute, nonconforming
 dq 0x00209A0000000000			; 53 Long mode code, 47 Present, 44 Code/Data, 43 Executable, 41 Readable
 SYS64_DATA_SEL equ $-gdt64		; Data segment, read/write, expand down
 dq 0x0000920000000000			; 47 Present, 44 Code/Data, 41 Writable
+USR64_CODE_SEL equ $-gdt64		; Ring 3 code segment, read/execute, nonconforming (same as SYS64_CODE_SEL but DPL 3)
+dq 0x0020FA0000000000			; 53 Long mode code, 47 Present, 46/45 DPL, 44 Code/Data, 43 Executable, 41 Readable
+USR64_DATA_SEL equ $-gdt64		; Ring 3 data segment, read/write (same as SYS64_DATA_SEL but DPL 3)
+dq 0x0000F20000000000			; 47 Present, 46/45 DPL, 44 Code/Data, 41 Writable
+TSS_SEL equ $-gdt64			; Task State Segment (16 bytes in long mode). Base 0x8000, Limit 0x67 (104 bytes, no I/O bitmap)
+dq 0x0000890080000067			; 47 Present, 43:40 Type 9 (64-bit TSS, available)
+dq 0x0000000000000000			; Base 63:32, reserved
 gdt64_end:
 
 IDTR64:					; Interrupt Descriptor Table Register
