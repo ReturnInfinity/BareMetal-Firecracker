@@ -12,6 +12,18 @@
 ; OUT:	Nothing
 ;	All other registers preserved
 os_apic_init:
+	; Switch to x2APIC (MSR-based register access) if the CPU supports it.
+	mov eax, 1
+	cpuid
+	bt ecx, 21			; Check x2APIC support bit
+	jnc os_apic_no_x2apic		; Not enabled? Bail out to regular APIC
+	mov ecx, IA32_APIC_BASE
+	rdmsr
+	bts eax, 10			; Set EXTD - switch from xAPIC to x2APIC
+	wrmsr
+	mov byte [os_apic_x2apic], 1	; Set system flag
+os_apic_no_x2apic:
+
 	mov ecx, APIC_VER
 	call os_apic_read
 	mov [os_apic_ver], eax
@@ -32,13 +44,25 @@ os_apic_init:
 
 
 ; -----------------------------------------------------------------------------
-; os_apic_read -- Read from a register in the APIC
+; os_apic_read -- Read from a register in the APIC/x2APIC
 ;  IN:	ECX = Register to read
 ; OUT:	RAX = Register value
 ;	All other registers preserved
 os_apic_read:
+	cmp byte [os_apic_x2apic], 0
+	jne os_apic_read_x2apic
 	mov rax, [os_LocalAPICAddress]
 	mov eax, [rax + rcx]
+	ret
+
+os_apic_read_x2apic:
+	push rdx
+	push rcx
+	shr ecx, 4
+	add ecx, 0x800			; x2APIC MSR = 0x800 + (xAPIC register offset >> 4)
+	rdmsr
+	pop rcx
+	pop rdx
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -49,10 +73,23 @@ os_apic_read:
 ;	RAX = Value to write
 ; OUT:	All registers preserved
 os_apic_write:
+	cmp byte [os_apic_x2apic], 0
+	jne os_apic_write_x2apic
 	push rcx
 	add rcx, [os_LocalAPICAddress]
 	mov [rcx], eax
 	pop rcx
+	ret
+
+os_apic_write_x2apic:
+	push rdx
+	push rcx
+	shr ecx, 4
+	add ecx, 0x800			; x2APIC MSR = 0x800 + (xAPIC register offset >> 4)
+	xor edx, edx			; Every register used here is 32-bit - upper half must be 0
+	wrmsr
+	pop rcx
+	pop rdx
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -153,6 +190,9 @@ os_apic_timer_set_clear:
 	jmp os_apic_timer_set_done
 ; -----------------------------------------------------------------------------
 
+
+; MSRs
+IA32_APIC_BASE	equ 0x01B		; Bit 10 = EXTD (x2APIC), Bit 11 = APIC Global Enable
 
 ; Register list
 ; 0x000 - 0x010 are Reserved

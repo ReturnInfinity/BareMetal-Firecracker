@@ -122,6 +122,7 @@ os_ioapic_ver:		equ os_SystemVariables + 0x0316
 os_ioapic_mde:		equ os_SystemVariables + 0x0317
 key_control:		equ os_SystemVariables + 0x0318
 os_net_icount:		equ os_SystemVariables + 0x031B
+os_apic_x2apic:		equ os_SystemVariables + 0x031C	; 1 if the LAPIC is in x2APIC (MSR) mode, 0 for xAPIC (MMIO)
 
 serial_rb_head:		equ os_SystemVariables + 0x0320	; Serial ring buffer head (read) pointer
 serial_rb_tail:		equ os_SystemVariables + 0x0321	; Serial ring buffer tail (write) pointer
