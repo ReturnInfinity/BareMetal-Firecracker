@@ -31,7 +31,9 @@ sys_pdpl:		equ 0x0000000000003000	; 0x003000 -> 0x003FFF	4K PDP table low
 sys_pdph:		equ 0x0000000000004000	; 0x004000 -> 0x004FFF	4K PDP table high
 sys_Pure64:		equ 0x0000000000005000	; 0x005000 -> 0x007FFF	12K Pure64 system data
 
+; CLEANUP
 						; 0x008000 -> 0x00FFFF	32K Free
+sys_tss:		equ 0x0000000000008000
 
 sys_pdl:		equ 0x0000000000010000	; 0x010000 -> 0x01FFFF	64K Page directory low (Maps up to 16GB of 2MiB pages or 8TB of 1GiB pages)
 sys_pdh:		equ 0x0000000000020000	; 0x020000 -> 0x09FFFF	512K Page directory high (Maps up to 128GB)
@@ -57,9 +59,19 @@ os_rx_buffer:		equ 0x0000000000140000	; 0x140000 -> 0x1C0000	512K Ethernet recei
 
 						; 0x1E0000 -> 0x1EFFFF	64K Monitor (free if not used)
 
+; Ring 3 app stack, reserved off the top of the app's high-mapped RAM window
+STACK_RESERVE_MIB	equ 1
+
+; GDT selectors (must match the gdt64 table built in Firecracker's init.asm)
+SYS64_CODE_SEL		equ 0x08
+SYS64_DATA_SEL		equ 0x10
+USR64_CODE_SEL		equ 0x18
+USR64_DATA_SEL		equ 0x20
+TSS_SEL			equ 0x28
+
 ; Vectors
 TIMER_VECTOR		equ 0x22		; Interrupt vector used for the LAPIC timer
-
+SYSCALL_VECTOR		equ 0x80		; Interrupt vector used for ring 3 -> ring 0 syscalls
 
 ; System Variables
 

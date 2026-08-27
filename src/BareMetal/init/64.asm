@@ -55,6 +55,17 @@ make_interrupt_gate_stubs:
 	dec ecx
 	jnz make_interrupt_gate_stubs
 
+	; Install the ring 3 -> ring 0 syscall gate (int 0x80). Bump its DPL to 3
+	; so user-mode app code is allowed to trigger it - every other vector stays
+	; DPL 0.
+	mov edi, SYSCALL_VECTOR
+	mov eax, int_syscall
+	call create_gate
+	mov edi, SYSCALL_VECTOR
+	shl edi, 4			; IDT entry = vector * 16 bytes
+	add edi, 5			; Offset of the type/attribute byte within the entry
+	or byte [edi], 0x60		; Raise DPL 0 -> DPL 3 (bits 6:5)
+
 	; Set device syscalls to stub
 	mov eax, os_stub
 	mov rdi, os_nvs_io
@@ -64,6 +75,19 @@ make_interrupt_gate_stubs:
 	; Configure the Stack base
 	mov eax, 0x1D0000		; Stacks start at 2MiB
 	mov [os_StackBase], rax
+
+	; Configure the TSS so ring 3 -> ring 0 transitions (interrupts, exceptions,
+	; and the int 0x80 syscall gate) land on a valid kernel stack. RSP0 is the
+	; only field that matters here - IST/RSP1/RSP2/the I/O bitmap are unused.
+	mov edi, sys_tss
+	xor eax, eax
+	mov ecx, 0x68/8
+	rep stosq			; Zero the whole 104-byte TSS
+	mov rax, [os_StackBase]
+	add rax, 65536			; Same kernel stack top 'start' (kernel.asm) sets RSP to
+	mov [sys_tss+4], rax		; RSP0
+	mov ax, TSS_SEL
+	ltr ax
 
 	; Configure Network packet buffer base
 	mov eax, os_rx_buffer

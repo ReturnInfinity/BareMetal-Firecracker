@@ -27,6 +27,36 @@ interrupt_gate:				; handler for all other interrupts
 
 
 ; -----------------------------------------------------------------------------
+; Syscall gate. IRQ N/A, INT 0x80 (SYSCALL_VECTOR), DPL 3
+; The app (ring 3) traps here for every b_* kernel call.
+; IN: R9 = syscall index (0 = b_input .. 6 = b_system, matching the function table
+; at the start kernel.asm; 7 = app exit, the repurposed/unused b_user slot).
+align 8
+int_syscall:
+	cmp r9, 7
+	je int_syscall_exit
+	cmp r9, 6
+	ja int_syscall_end		; Unknown index -- ignore and return
+
+	push r10
+	lea r10, [0x100010 + r9*8]	; Reuse the existing b_* function pointer table
+	call [r10]
+	pop r10
+
+int_syscall_end:
+	iretq
+
+int_syscall_exit:
+	; App called b_exit() (index 7). Tear down back to the kernel's own stack
+	; and resume where 'start_app' left off (kernel.asm) - this never iretq's
+	; back to ring 3, unlike every other syscall index above. Gross
+	mov rsp, [os_StackBase]
+	add rsp, 65536			; Same kernel stack top the TSS's RSP0 points to
+	jmp app_fin
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
 ; Keyboard interrupt. IRQ 0x01, INT 0x21
 ; This IRQ runs whenever there is input on the keyboard
 align 8
