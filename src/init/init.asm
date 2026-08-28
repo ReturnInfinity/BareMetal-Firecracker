@@ -266,7 +266,10 @@ parse_done:
 ; A single PML4 entry is 8 bytes in length
 
 	mov edi, 0x00002000		; Create a PML4 entry for physical memory
-	mov eax, 0x00003003		; Bits 0 (P), 1 (R/W), location of low PDP (4KiB aligned)
+;	mov eax, 0x00003003		; Bits 0 (P), 1 (R/W), location of low PDP (4KiB aligned)
+; TODO - The line below gives apps access to kernel memory. Either this stays or is removed
+; (with proper methods for getting kernel data).
+	mov eax, 0x00003007		; Bits 0 (P), 1 (R/W), 2 (U/S), location of low PDP (4KiB aligned)
 	stosq
 	mov edi, 0x00002800		; Create a PML4 entry for higher half (starting at 0xFFFF800000000000)
 	mov eax, 0x00004007		; Bits 0 (P), 1 (R/W), 2 (U/S - app runs in ring 3), location of high PDP (4KiB aligned)
@@ -282,7 +285,10 @@ parse_done:
 
 	mov ecx, 16			; number of PDPE's to make.. each PDPE maps 1GiB of physical memory
 	mov edi, 0x00003000		; location of low PDPE
-	mov eax, 0x00010003		; Bits 0 (P), 1 (R/W), location of first low PD (4KiB aligned)
+;	mov eax, 0x00010003		; Bits 0 (P), 1 (R/W), location of first low PD (4KiB aligned)
+; TODO - The line below gives apps access to kernel memory. Either this stays or is removed
+; (with proper methods for getting kernel data).
+	mov eax, 0x00010007		; Bits 0 (P), 1 (R/W), 2 (U/S), location of first low PD (4KiB aligned)
 pdpte_low:
 	stosq
 	add rax, 0x00001000		; 4KiB later (512 records x 8 bytes)
@@ -295,7 +301,10 @@ pdpte_low:
 
 	mov ecx, 2048			; Create 2048 2MiB page maps
 	mov edi, 0x00010000		; Location of first PDE
-	mov eax, 0x00000083		; Bits 0 (P), 1 (R/W), and 7 (PS) set
+;	mov eax, 0x00000083		; Bits 0 (P), 1 (R/W), and 7 (PS) set
+; TODO - The line below gives apps access to kernel memory. Either this stays or is removed
+; (with proper methods for getting kernel data).
+	mov eax, 0x00000087		; Bits 0 (P), 1 (R/W), 2 (U/S), and 7 (PS) set
 pde_low:				; Create a 2MiB page
 	stosq
 	add rax, 0x00200000		; Increment by 2MiB
