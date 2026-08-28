@@ -90,6 +90,20 @@ int_apic_timer:
 	cmp qword [os_TimerCallback], 0	; Callback set?
 	je int_apic_timer_end		; If not then jump to end
 
+	; Only create the callback call if this interrupt landed in ring 3
+	; (the app) - interrupting the kernel itself (e.g. HLT inside a
+	; nested b_system syscall like SLEEP) is a same-privilege interrupt,
+	; so the CPU never pushed RSP/SS for it. The 5-word-frame rewrite
+	; below would then read/write stack slots that don't belong to this
+	; frame, corrupting whatever the interrupted kernel code had on its
+	; own stack. There is also no app context to safely divert a callback
+	; into in that case - RPL 3 in the pushed CS selector is what
+	; distinguishes "interrupted the app" from "interrupted the kernel".
+	mov rax, [rsp+24]		; CS from the CPU-pushed frame (past our 2 pushes)
+	and rax, 3			; RPL - 3 only when we interrupted ring 3
+	cmp rax, 3
+	jne int_apic_timer_end
+
 	; We could do a 'call [os_TimerCallback]' here but that would not be ideal.
 	; A defective callback would hang the system if it never returned back to the
 	; interrupt handler. Instead, we modify the stack so that the callback is
