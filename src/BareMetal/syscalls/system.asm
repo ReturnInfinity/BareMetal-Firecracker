@@ -66,7 +66,15 @@ b_system_net_config:
 ; Bus
 ; N/A
 
-; Standard Output
+; Misc
+
+b_system_irq_enable:
+	sti				; Enable interrupts
+	ret
+
+b_system_irq_disable:
+	cli				; Disable interrupts
+	ret
 
 b_system_stdout_get:
 	mov rax, qword [0x100018]
@@ -75,8 +83,6 @@ b_system_stdout_get:
 b_system_stdout_set:
 	mov qword [0x100018], rax
 	ret
-
-; Misc
 
 b_system_callback_timer:
 	mov qword [os_TimerCallback], rax
@@ -342,8 +348,8 @@ b_system_table:
 	dw none				; 0x4F
 
 ; Misc
-	dw none				; 0x50
-	dw none				; 0x51
+	dw b_system_irq_enable		; 0x50
+	dw b_system_irq_disable		; 0x51
 	dw b_system_stdout_set		; 0x52
 	dw b_system_stdout_get		; 0x53
 	dw none				; 0x54
