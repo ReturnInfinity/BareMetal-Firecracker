@@ -11,8 +11,8 @@
 // Apps run in ring 3 (see AppPort's port/crt0.c), so a plain near `call` to
 // the kernel's fixed function-pointer table at 0x100010 can't be trusted:
 // paging lets ring 3 execute those addresses, but any privileged instruction
-// inside one -- e.g. b_system's IRQ_ENABLE/IRQ_DISABLE, which is `sti`/`cli`
-// in syscalls/system.asm -- still runs at CPL 3 and #GPs, since a near call
+// inside one - e.g. b_system's IRQ_ENABLE/IRQ_DISABLE, which is `sti`/`cli`
+// in syscalls/system.asm - still runs at CPL 3 and #GPs, since a near call
 // doesn't change CS/CPL. Every b_* call below instead traps via `int $0x80`
 // with R9 = the syscall index; interrupt.asm's int_syscall gate reuses the
 // same 0x100010 table but issues the `call` itself from ring 0, so
@@ -24,7 +24,7 @@
 #define SYSCALL_NVS_READ	4
 #define SYSCALL_NVS_WRITE	5
 #define SYSCALL_SYSTEM		6
-#define SYSCALL_EXIT		7	// Repurposed/unused b_user slot -- see int_syscall_exit
+#define SYSCALL_EXIT		7	// Repurposed/unused b_user slot - see int_syscall_exit
 
 
 // Input/Output

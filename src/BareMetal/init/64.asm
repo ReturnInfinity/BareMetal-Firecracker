@@ -78,7 +78,8 @@ make_interrupt_gate_stubs:
 
 	; Configure the TSS so ring 3 -> ring 0 transitions (interrupts, exceptions,
 	; and the int 0x80 syscall gate) land on a valid kernel stack. RSP0 is the
-	; only field that matters here - IST/RSP1/RSP2/the I/O bitmap are unused.
+	; only field that is used here - IST(1-7)/RSP1/RSP2/the I/O Map Base Address are unused.
+	; See "64-Bit TSS Format" in Intel docs
 	mov edi, sys_tss
 	xor eax, eax
 	mov ecx, 0x68/8
@@ -87,7 +88,7 @@ make_interrupt_gate_stubs:
 	add rax, 65536			; Same kernel stack top 'start' (kernel.asm) sets RSP to
 	mov [sys_tss+4], rax		; RSP0
 	mov ax, TSS_SEL
-	ltr ax
+	ltr ax				; Load Task Register
 
 	; Configure Network packet buffer base
 	mov eax, os_rx_buffer
