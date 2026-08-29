@@ -68,12 +68,24 @@ b_system_net_config:
 
 ; Misc
 
+; Ideally sti/cli would be used here - if justs sets/clears IF (bit 9) of RFLAGS.
+; However, int_syscall's iretq just restores the previous value of RFLAGS
+; More stack shenanigans needed...
+;
+; [rsp+48] depends on the exact call depth from the trap frame to here:
+; int_syscall: push r10 (+8)
+; call [r10] into b_system (+8)
+; b_system: push rcx (+8)
+; call rcx into this routine (+8)
+; = 32 bytes
+; Plus the CPU's own RIP/CS/RFLAGS/RSP/SS frame, where RFLAGS sits at +16.
+; If that call chain changes, this offset must be updated to match.
 b_system_irq_enable:
-	sti				; Enable interrupts
+	or qword [rsp+48], 0x200	; Set IF in the trap frame's saved RFLAGS
 	ret
 
 b_system_irq_disable:
-	cli				; Disable interrupts
+	and qword [rsp+48], ~0x200	; Clear IF in the trap frame's saved RFLAGS
 	ret
 
 b_system_stdout_get:
