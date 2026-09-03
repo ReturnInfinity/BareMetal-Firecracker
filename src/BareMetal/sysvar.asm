@@ -55,12 +55,10 @@ os_rx_desc:		equ 0x0000000000130000	; 0x130000 -> 0x137FFF	32K Ethernet receive 
 os_tx_desc:		equ 0x0000000000138000	; 0x138000 -> 0x13FFFF	32K Ethernet transmit descriptors (only uses 12KiB)
 os_rx_buffer:		equ 0x0000000000140000	; 0x140000 -> 0x1C0000	512K Ethernet receive buffer (256 packets, 2048 bytes each)
 
-						; 0x1C0000 -> 0x1DFFFF	128K Free
+os_sys_stack_base:	equ 0x00000000001C0000	; 0x1C0000 -> 0x1CFFFF	64K Ring 0 stack
+os_usr_stack_base:	equ 0x00000000001D0000	; 0x1D0000 -> 0x1DFFFF	64K Ring 3 stack
 
 						; 0x1E0000 -> 0x1EFFFF	64K Monitor (free if not used)
-
-; Ring 3 app stack, reserved off the top of the app's high-mapped RAM window
-STACK_RESERVE_MIB	equ 1
 
 ; GDT selectors (must match the gdt64 table built in Firecracker's init.asm)
 SYS64_CODE_SEL		equ 0x08

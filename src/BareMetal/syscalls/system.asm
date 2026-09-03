@@ -36,7 +36,6 @@ b_system_timecounter:
 
 b_system_free_memory:
 	mov eax, [os_MemAmount]
-	sub eax, STACK_RESERVE_MIB	; The top STACK_RESERVE_MIB is reserved for the app's ring 3 stack for now
 	ret
 
 b_system_wallclock:

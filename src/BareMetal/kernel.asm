@@ -61,23 +61,13 @@ start_app:
 	mov esi, msg_payload_start
 	call os_debug_string
 
-; CLEANUP
-	; Enter ring 3. The app has never had its own stack before (it always ran
-	; on this same kernel stack) - give it the top of its own high-mapped RAM
-	; window as a stack, growing down. b_system_free_memory (syscalls/system.asm)
-	; reserves the same amount off that top so the heap can't grow into it.
-	mov eax, [os_MemAmount]
-	shl rax, 20			; MiB -> bytes
-	mov rbx, [app_start]
-	add rbx, rax			; Top of the app's high-mapped RAM = initial user RSP
-
-	; Commit stack shenanigans
-	push USR64_DATA_SEL | 3		; SS (RPL 3)
-	push rbx			; RSP
-	push 0x202			; RFLAGS (IF=1, reserved bit 1 set)
-	push USR64_CODE_SEL | 3		; CS (RPL 3)
-	push qword [app_start]		; RIP
-	iretq				; Drop to ring 3 and execute the app
+	; Enter ring 3 by committing stack shenanigans. The app has its own stack
+	push USR64_DATA_SEL | 3			; SS (RPL 3)
+	push os_usr_stack_base + 65536		; RSP (top of the app's stack)
+	push 0x202				; RFLAGS (IF=1, reserved bit 1 set)
+	push USR64_CODE_SEL | 3			; CS (RPL 3)
+	push qword [app_start]			; RIP
+	iretq					; Drop to ring 3 and execute the app
 
 app_fin:
 	mov esi, msg_payload_end

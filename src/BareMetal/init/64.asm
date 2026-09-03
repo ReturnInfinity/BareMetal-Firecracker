@@ -72,8 +72,8 @@ make_interrupt_gate_stubs:
 	stosq
 	stosq
 
-	; Configure the Stack base
-	mov eax, 0x1D0000		; Stacks start at 2MiB
+	; Configure the system stack base
+	mov eax, os_sys_stack_base
 	mov [os_StackBase], rax
 
 	; Configure the TSS so ring 3 -> ring 0 transitions (interrupts, exceptions,
