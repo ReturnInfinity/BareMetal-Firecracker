@@ -60,7 +60,16 @@ start:
 start_app:
 	mov esi, msg_payload_start
 	call os_debug_string
-	call [app_start]		; Execute app
+
+	; Enter ring 3 by committing stack shenanigans. The app has its own stack
+	push USR64_DATA_SEL | 3			; SS (RPL 3)
+	push os_usr_stack_base + 65536		; RSP (top of the app's stack)
+	push 0x202				; RFLAGS (IF=1, reserved bit 1 set)
+	push USR64_CODE_SEL | 3			; CS (RPL 3)
+	push qword [app_start]			; RIP
+	iretq					; Drop to ring 3 and execute the app
+
+app_fin:
 	mov esi, msg_payload_end
 	call os_debug_string
 	jmp shutdown

@@ -31,6 +31,10 @@ u64 b_nvs_write(void *mem, u64 start, u64 num, u64 drivenum);
 // System
 u64 b_system(u64 function, u64 var1, u64 var2);
 
+// Exit -- hand control back to the kernel. Ring 3 apps have no `ret` path
+// into it (see AppPort's crt0.c/posix_shim.c), so this never returns.
+void b_exit(void) __attribute__((noreturn));
+
 // Index for b_config calls
 #define TIMECOUNTER		0x00
 #define FREE_MEMORY		0x01
@@ -38,8 +42,8 @@ u64 b_system(u64 function, u64 var1, u64 var2);
 #define TSC			0x1F
 #define NET_STATUS		0x30
 #define NET_CONFIG		0x31
-#define BUS_READ		0x50
-#define BUS_WRITE		0x51
+#define IRQ_ENABLE		0x50
+#define IRQ_DISABLE		0x51
 #define STDOUT_SET		0x52
 #define STDOUT_GET		0x53
 #define CALLBACK_TIMER		0x60

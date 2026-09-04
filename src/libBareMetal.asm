@@ -25,8 +25,8 @@ WALLCLOCK		equ 0x02
 TSC			equ 0x1F
 NET_STATUS		equ 0x30
 NET_CONFIG		equ 0x31
-BUS_READ		equ 0x50
-BUS_WRITE		equ 0x51
+IRQ_ENABLE		equ 0x50
+IRQ_DISABLE		equ 0x51
 STDOUT_SET		equ 0x52
 STDOUT_GET		equ 0x53
 CALLBACK_TIMER		equ 0x60	; Configure timer interrupt callback
