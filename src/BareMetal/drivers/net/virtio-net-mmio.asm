@@ -19,7 +19,7 @@ net_virtio_mmio_init:
 	; Check for a valid device
 	mov rsi, [os_virtionet_base]
 	cmp rsi, 0
-	je virtio_net_mmio_init_done
+	je virtio_net_mmio_init_done_no_nic
 
 	; Build device info table
 	mov rdi, 0x11A000
@@ -34,9 +34,10 @@ net_virtio_mmio_init:
 	mov ax, [rsi+4]		; read MAC bytes 4-5
 	mov [rdi+4], ax
 
-	add byte [os_net_icount], 1
-
 	call net_virtio_mmio_reset
+	jc virtio_net_mmio_init_done_no_nic
+
+	add byte [os_net_icount], 1
 
 	; TODO - Get value below from init
 	; Configure interrupt handler
@@ -57,6 +58,10 @@ virtio_net_mmio_init_done:
 	pop rsi
 	pop rdi
 	ret
+
+virtio_net_mmio_init_done_no_nic:
+	stc				; Set carry flag
+	jmp virtio_net_mmio_init_done
 ; -----------------------------------------------------------------------------
 
 
@@ -244,6 +249,8 @@ virtio_net_init_pop_rx_a:
 	mov eax, [rsi+VIRTIO_MMIO_INT_STATUS]
 	mov [rsi+VIRTIO_MMIO_INT_ACK], eax
 
+	clc				; Clear Carry flag for success
+
 net_virtio_mmio_reset_done:
 	pop rax
 	pop rcx
@@ -253,6 +260,7 @@ net_virtio_mmio_reset_done:
 
 net_virtio_mmio_reset_error:
 	; TODO Handle error
+	stc				; Set Carry flag for error
 	jmp net_virtio_mmio_reset_done
 ; -----------------------------------------------------------------------------
 

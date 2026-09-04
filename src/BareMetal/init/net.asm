@@ -18,6 +18,7 @@ init_net:
 
 	; Firecracker
 	call net_virtio_mmio_init
+	jc init_net_end			; If carry is set than there was an issue with init
 	mov byte [os_NetEnabled], 1	; A supported NIC was found. Set flag in the kernel that networking is enabled
 	add byte [os_net_icount], 1	; Increment the counter
 	jmp init_net_end		; Only 1 NIC at the moment
