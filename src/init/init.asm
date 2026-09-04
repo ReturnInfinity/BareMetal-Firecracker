@@ -618,8 +618,6 @@ sys_pdph:		equ 0x0000000000004000	; 0x004000 -> 0x004FFF	4K PDP table high
 
 SystemVariables:	equ 0x0000000000005800
 
-sys_tss:		equ 0x0000000000005F00	; 104 byte Task State Segment (RSP0 for ring 3 -> ring 0 transitions)
-
 ; DQ - Starting at offset 0, increments by 0x8
 p_LocalAPICAddress:	equ SystemVariables + 0x10	; Address of the Local APIC (xAPIC)
 sys_timer:		equ SystemVariables + 0x30
