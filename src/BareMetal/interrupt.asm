@@ -90,55 +90,28 @@ int_apic_timer:
 	cmp qword [os_TimerCallback], 0	; Callback set?
 	je int_apic_timer_end		; If not then jump to end
 
-	; Only create the callback call if this interrupt landed in ring 3
-	; (the app) - interrupting the kernel itself (e.g. HLT inside a
-	; nested b_system syscall like SLEEP) is a same-privilege interrupt,
-	; so the CPU never pushed RSP/SS for it. The 5-word-frame rewrite
-	; below would then read/write stack slots that don't belong to this
-	; frame, corrupting whatever the interrupted kernel code had on its
-	; own stack. There is also no app context to safely divert a callback
-	; into in that case - RPL 3 in the pushed CS selector is what
-	; distinguishes "interrupted the app" from "interrupted the kernel".
-	mov rax, [rsp+24]		; CS from the CPU-pushed frame (past our 2 pushes)
-	and rax, 3			; RPL - 3 only when we interrupted ring 3
-	cmp rax, 3
-	jne int_apic_timer_end
-
-	; We could do a 'call [os_TimerCallback]' here but that would not be ideal.
-	; A defective callback would hang the system if it never returned back to the
-	; interrupt handler. Instead, we modify the stack so that the callback is
-	; executed after the interrupt handler has finished. Once the callback has
-	; finished, the execution flow will pick up back in the program.
-	; Before          After
-	; -----------------------------------
-	;                 RSP -> RAX
-	; RSP -> RAX             RCX
-	;        RCX             RIP Callback
-	;        RIP             CS
-	;        CS              RFLAGS (Original minus 8)
-	;        RFLAGS          RSP
-	;        RSP             SS
-	;        SS              RIP Original
 	push rdi
 	push rsi
-	mov rcx, [os_TimerCallback]	; RCX stores the callback function address
-	mov rsi, rsp			; Copy the current stack pointer to RSI
-	sub rsp, 8			; Subtract 8 since we add a 64-bit value to the stack
-	mov rdi, rsp			; Copy the 'new' stack pointer to RDI
+	cld
+	mov rcx, [os_TimerCallback]
+	mov rsi, rsp
+	sub rsp, 8
+	mov rdi, rsp
 	movsq				; RSI
 	movsq				; RDI
 	movsq				; RAX
 	movsq				; RCX
+	movsq				; RFLAGS (live)
 	lodsq				; RIP
 	xchg rax, rcx
 	stosq				; Callback address
 	movsq				; CS
-	movsq				; Flags
-	lodsq				; RSP
-	sub rax, 8
-	stosq
+	movsq				; RFLAGS (hw)
+	lodsq				; RSP (hw) -> RAX
+	sub rax, 8			; Room on the real interrupted stack for the stashed RIP
+	stosq				; Store adjusted RSP as the outgoing RSP field
 	movsq				; SS
-	mov [rax], rcx			; Original RIP
+	mov [rax], rcx			; Original RIP, on the stack iretq will switch back to
 	pop rsi
 	pop rdi
 
