@@ -50,6 +50,8 @@ net_virtio_mmio_init:
 	mov eax, 0x26			; Network Interrupt Vector
 	call os_ioapic_mask_clear
 
+	clc				; Clear the carry flag for success
+
 virtio_net_mmio_init_done:
 	pop rax
 	pop rbx
