@@ -19,6 +19,8 @@
 #	SOCKET		Unix socket path used by the Firecracker API
 #	KERNEL		Path to the BareMetal ELF kernel image
 #	DISK		Path to the disk image
+#	MEMSIZE		VM memory size in MiB
+#	DISKSIZE	Size of the disk image, created on first start (e.g. 512M)
 #	SESSION		Screen session name
 #	VMLOG		Path to the VM serial console log file
 #	VMLOGPOS	Path to the output read-position tracking file
@@ -28,6 +30,8 @@ set -eu
 SOCKET=/tmp/firecracker.socket
 KERNEL="$PWD/sys/baremetal.elf"
 DISK="$PWD/disk.img"
+MEMSIZE=4 # As of last webserver.py test Python needed at least 28MiB
+DISKSIZE=512M
 SESSION=fc-vm
 FCLOG="/tmp/fc.log"
 VMLOG=/tmp/fc-vm.log
@@ -44,10 +48,19 @@ case "$cmd" in
 		rm -f "$VMLOG"
 		rm -f "$VMLOGPOS"
 
-		# Verify the tap device exists
-		if ! ip link show tap0 > /dev/null 2>&1; then
-			echo "Error: tap device 'tap0' not found. Create it before starting the VM. Check scripts dir." >&2
-			exit 1
+		# Create the disk image if it doesn't already exist -- a plain
+		# zeroed (sparse) file, not an ext2 filesystem: BMFS (see
+		# BareMetal-AppPort/port/bmfs.c) treats this as raw sectors it
+		# lays its own superblock/directory table/file data across
+		# directly, with no filesystem of its own underneath.
+		# Formatting it with mkfs.ext2 would leave non-zero ext2
+		# metadata sitting in the exact sectors BMFS uses for its own
+		# superblock/directory table, which BMFS then misreads as
+		# pre-existing (garbage) directory entries -- corrupting block
+		# allocation for the first file any app creates.
+		if [ ! -f "$DISK" ]; then
+			echo "Creating $DISKSIZE disk image at $DISK"
+			truncate -s "$DISKSIZE" "$DISK"
 		fi
 
 		# Kill any leftover session from a previous run
@@ -64,19 +77,23 @@ case "$cmd" in
 		while [ ! -S "$SOCKET" ]; do sleep 0.05; done
 
 		# Set Firecracker kernel and boot args
+		boot_args=""
+		[ "$#" -gt 0 ] && boot_args="args=\`$*\`"
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/boot-source' \
 			-H 'Content-Type: application/json' \
-			-d "{ \"kernel_image_path\": \"$KERNEL\", \"boot_args\": \"\" }" > /dev/null
+			-d "{ \"kernel_image_path\": \"$KERNEL\", \"boot_args\": \"$boot_args\" }" > /dev/null
 
 		# Set Firecracker CPU and MEM
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/machine-config' \
 			-H 'Content-Type: application/json' \
-			-d '{ "vcpu_count": 1, "mem_size_mib": 4 }' > /dev/null
+			-d "{ \"vcpu_count\": 1, \"mem_size_mib\": $MEMSIZE }" > /dev/null
 
 		# Set Firecracker network
+		if ip link show tap0 > /dev/null 2>&1; then
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/network-interfaces/eth0' \
 			-H 'Content-Type: application/json' \
 			-d '{ "iface_id": "eth0", "host_dev_name": "tap0", "guest_mac": "02:FC:AB:CD:EF:01" }' > /dev/null
+		fi
 
 		# Set Firecracker storage
 		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/drives/rootfs' \
@@ -154,12 +171,14 @@ case "$cmd" in
 		echo "  help               Show this help screen"
 		echo ""
 		echo "Configuration (edit variables in script):"
-		echo "  SOCKET  $SOCKET"
-		echo "  KERNEL  $KERNEL"
-		echo "  DISK    $DISK"
-		echo "  SESSION $SESSION"
-		echo "  VMLOG   $VMLOG"
-		echo "  FCLOG   $FCLOG"
+		echo "  SOCKET   $SOCKET"
+		echo "  KERNEL   $KERNEL"
+		echo "  DISK     $DISK"
+		echo "  MEMSIZE  $MEMSIZE"
+		echo "  DISKSIZE $DISKSIZE"
+		echo "  SESSION  $SESSION"
+		echo "  VMLOG    $VMLOG"
+		echo "  FCLOG    $FCLOG"
 
 		;;
 
