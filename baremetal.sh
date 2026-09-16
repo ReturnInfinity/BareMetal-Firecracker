@@ -41,8 +41,50 @@ VMLOGPOS=/tmp/fc-vm.log.pos
 cmd="${1:-}" # first argument is the subcommand (default: empty)
 [ "$#" -gt 0 ] && shift # remove subcommand so "$@" holds remaining args
 
+# PUT to the Firecracker API. Unlike a plain `curl -f`, this reports the
+# API's error body (e.g. "not enough memory to load the kernel") and kills
+# the leftover firecracker session instead of leaving it running while the
+# script exits silently.
+fc_put() {
+	path="$1"
+	body="$2"
+	tmp=$(mktemp)
+	status=$(curl -s -o "$tmp" -w '%{http_code}' --unix-socket "$SOCKET" -X PUT "http://localhost$path" \
+		-H 'Content-Type: application/json' -d "$body")
+	case "$status" in
+		2??)
+			rm -f "$tmp"
+			;;
+		*)
+			msg=$(sed -n 's/.*"fault_message"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$tmp")
+			[ -n "$msg" ] || msg=$(cat "$tmp")
+			rm -f "$tmp"
+			echo "Error: Firecracker API PUT $path failed (HTTP $status): $msg" >&2
+			screen -S "$SESSION" -X quit > /dev/null 2>&1 || true
+			rm -f "$SOCKET"
+			exit 1
+			;;
+	esac
+}
+
 case "$cmd" in
 	start)
+		# MEMSIZE must fit the kernel ELF plus ~2MiB of loader/boot
+		# overhead, or firecracker's InstanceStart fails with "Unable
+		# to read kernel image" once the ELF no longer fits in guest
+		# memory. Check this up front instead of letting firecracker
+		# fail after it's already running.
+		if [ ! -f "$KERNEL" ]; then
+			echo "Error: kernel image not found at $KERNEL" >&2
+			exit 1
+		fi
+		kernel_size=$(wc -c < "$KERNEL")
+		min_mib=$(( (kernel_size + 1048575) / 1048576 + 2 ))
+		if [ "$MEMSIZE" -lt "$min_mib" ]; then
+			echo "Error: MEMSIZE=${MEMSIZE}MiB is too small for $KERNEL ($kernel_size bytes); need at least ${min_mib}MiB" >&2
+			exit 1
+		fi
+
 		rm -f "$SOCKET"
 		rm -f "$FCLOG"
 		rm -f "$VMLOG"
@@ -73,37 +115,41 @@ case "$cmd" in
 		# Flush screen log immediately instead of the default 10s interval
 		screen -S "$SESSION" -X logfile flush 0
 
-		# Wait for socket
-		while [ ! -S "$SOCKET" ]; do sleep 0.05; done
+		# Wait for socket, but bail out if firecracker exits (or never
+		# starts) instead of waiting forever
+		tries=0
+		while [ ! -S "$SOCKET" ]; do
+			if ! screen -list "$SESSION" > /dev/null 2>&1; then
+				echo "Error: firecracker exited before creating its API socket. Check $FCLOG for details." >&2
+				exit 1
+			fi
+			tries=$((tries + 1))
+			if [ "$tries" -ge 200 ]; then
+				echo "Error: timed out waiting for firecracker API socket $SOCKET" >&2
+				screen -S "$SESSION" -X quit > /dev/null 2>&1 || true
+				exit 1
+			fi
+			sleep 0.05
+		done
 
 		# Set Firecracker kernel and boot args
 		boot_args=""
 		[ "$#" -gt 0 ] && boot_args="args=\`$*\`"
-		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/boot-source' \
-			-H 'Content-Type: application/json' \
-			-d "{ \"kernel_image_path\": \"$KERNEL\", \"boot_args\": \"$boot_args\" }" > /dev/null
+		fc_put '/boot-source' "{ \"kernel_image_path\": \"$KERNEL\", \"boot_args\": \"$boot_args\" }"
 
 		# Set Firecracker CPU and MEM
-		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/machine-config' \
-			-H 'Content-Type: application/json' \
-			-d "{ \"vcpu_count\": 1, \"mem_size_mib\": $MEMSIZE }" > /dev/null
+		fc_put '/machine-config' "{ \"vcpu_count\": 1, \"mem_size_mib\": $MEMSIZE }"
 
 		# Set Firecracker network
 		if ip link show tap0 > /dev/null 2>&1; then
-		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/network-interfaces/eth0' \
-			-H 'Content-Type: application/json' \
-			-d '{ "iface_id": "eth0", "host_dev_name": "tap0", "guest_mac": "02:FC:AB:CD:EF:01" }' > /dev/null
+		fc_put '/network-interfaces/eth0' '{ "iface_id": "eth0", "host_dev_name": "tap0", "guest_mac": "02:FC:AB:CD:EF:01" }'
 		fi
 
 		# Set Firecracker storage
-		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/drives/rootfs' \
-			-H 'Content-Type: application/json' \
-			-d "{ \"drive_id\": \"rootfs\", \"path_on_host\": \"$DISK\", \"is_root_device\": true, \"is_read_only\": false }" > /dev/null
+		fc_put '/drives/rootfs' "{ \"drive_id\": \"rootfs\", \"path_on_host\": \"$DISK\", \"is_root_device\": true, \"is_read_only\": false }"
 
 		# Start Firecracker VM
-		curl -sf --unix-socket "$SOCKET" -X PUT 'http://localhost/actions' \
-			-H 'Content-Type: application/json' \
-			-d '{ "action_type": "InstanceStart" }' > /dev/null
+		fc_put '/actions' '{ "action_type": "InstanceStart" }'
 
 		echo "BareMetal VM started. VM Log: $VMLOG, Firecracker Log: $FCLOG"
 
