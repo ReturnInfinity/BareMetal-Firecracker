@@ -81,7 +81,7 @@ case "$cmd" in
 		kernel_size=$(wc -c < "$KERNEL")
 		min_mib=$(( (kernel_size + 1048575) / 1048576 + 2 ))
 		if [ "$MEMSIZE" -lt "$min_mib" ]; then
-			echo "Error: MEMSIZE=${MEMSIZE}MiB is too small for $KERNEL ($kernel_size bytes); need at least ${min_mib}MiB" >&2
+			echo "Error: MEMSIZE=${MEMSIZE}MiB is too small for $KERNEL ($kernel_size bytes); needs at least ${min_mib}MiB" >&2
 			exit 1
 		fi
 
