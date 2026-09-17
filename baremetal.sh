@@ -30,12 +30,17 @@ set -eu
 SOCKET=/tmp/firecracker.socket
 KERNEL="$PWD/sys/baremetal.elf"
 DISK="$PWD/disk.img"
+CPUCOUNT=1
 MEMSIZE=4 # As of last webserver.py test Python needed at least 28MiB
 DISKSIZE=512M
 SESSION=fc-vm
 FCLOG="/tmp/fc.log"
 VMLOG=/tmp/fc-vm.log
 VMLOGPOS=/tmp/fc-vm.log.pos
+MEMHOTPLUG_EN=1
+MEMHOTPLUG_MAX=1024
+MEMHOTPLUG_BLOCK=2
+MEMHOTPLUG_SLOT=128 # 128 is the minimum for KVM
 
 # Prepare arguments
 cmd="${1:-}" # first argument is the subcommand (default: empty)
@@ -138,7 +143,7 @@ case "$cmd" in
 		fc_put '/boot-source' "{ \"kernel_image_path\": \"$KERNEL\", \"boot_args\": \"$boot_args\" }"
 
 		# Set Firecracker CPU and MEM
-		fc_put '/machine-config' "{ \"vcpu_count\": 1, \"mem_size_mib\": $MEMSIZE }"
+		fc_put '/machine-config' "{ \"vcpu_count\": $CPUCOUNT, \"mem_size_mib\": $MEMSIZE }"
 
 		# Set Firecracker network
 		if ip link show tap0 > /dev/null 2>&1; then
@@ -147,6 +152,11 @@ case "$cmd" in
 
 		# Set Firecracker storage
 		fc_put '/drives/rootfs' "{ \"drive_id\": \"rootfs\", \"path_on_host\": \"$DISK\", \"is_root_device\": true, \"is_read_only\": false }"
+
+		# Set Firecracker hotplug memory
+		if [ "$MEMHOTPLUG_EN" -eq 1 ]; then
+		fc_put '/hotplug/memory' "{ \"total_size_mib\": $MEMHOTPLUG_MAX, \"block_size_mib\": $MEMHOTPLUG_BLOCK, \"slot_size_mib\": $MEMHOTPLUG_SLOT }"
+		fi
 
 		# Start Firecracker VM
 		fc_put '/actions' '{ "action_type": "InstanceStart" }'
