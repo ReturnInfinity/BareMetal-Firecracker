@@ -682,6 +682,26 @@ dq 0x0000F20000000000			; 47 Present, 46/45 DPL, 44 Code/Data, 41 Writable
 TSS_SEL equ $-gdt64			; Task State Segment (16 bytes in long mode). Base 0x8000, Limit 0x67 (104 bytes, no I/O bitmap)
 dq 0x0000890080000067			; 47 Present, 43:40 Type 9 (64-bit TSS, available)
 dq 0x0000000000000000			; Base 63:32, reserved
+
+; SYSRET (64-bit) needs three CONSECUTIVE selectors at base/base+8/base+16 --
+; IA32_STAR[63:48] is programmed with this block's base (SYSRET_CS32_SEL
+; below), and `sysretq` always derives CS from base+16 and SS from base+8, no
+; other choice. That arithmetic can't be satisfied by USR64_CODE_SEL/
+; USR64_DATA_SEL above (they're 8 bytes apart, not 16) without moving them --
+; and USR64_CODE_SEL/USR64_DATA_SEL are already baked into kernel.asm's
+; start_app iretq sequence and sysvar.asm, so a dedicated block here (used by
+; sysretq only, never by iretq) is far less to disturb than renumbering
+; those. SYSRET_CS32_SEL itself is never actually dereferenced by a 64-bit
+; sysretq (it only exists so base+8/base+16 land on real, usable
+; descriptors) but is still filled in as a valid ring-3 code descriptor, not
+; left zeroed, in case a future CPU/hypervisor validates it regardless.
+SYSRET_CS32_SEL equ $-gdt64		; Never actually used by sysretq in 64-bit mode -- exists only so the +8/+16 arithmetic below lands correctly. Same content as USR64_CODE_SEL so it's at least a valid descriptor if anything ever reads it.
+dq 0x0020FA0000000000
+SYSRET_SS_SEL equ $-gdt64		; = SYSRET_CS32_SEL+8 -- the real ring-3 SS `sysretq` loads. Same content as USR64_DATA_SEL.
+dq 0x0000F20000000000
+SYSRET_CS64_SEL equ $-gdt64		; = SYSRET_CS32_SEL+16 -- the real ring-3 CS `sysretq` loads. Same content as USR64_CODE_SEL (a different GDT slot describing an identical segment -- harmless; nothing here compares CS values across a syscall boundary).
+dq 0x0020FA0000000000
+
 gdt64_end:
 
 IDTR64:					; Interrupt Descriptor Table Register

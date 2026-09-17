@@ -57,6 +57,129 @@ int_syscall_exit:
 
 
 ; -----------------------------------------------------------------------------
+; Fast syscall gate (SYSCALL/SYSRET, via IA32_LSTAR -- see init_64/64.asm).
+; Reached directly by the ring-3 `syscall` x86 instruction, bypassing int
+; 0x80/int_syscall above entirely -- added because some ring-3 runtimes
+; (Zig's std is the concrete case) always emit that raw opcode wherever they
+; think they're making a Linux syscall, with no libc call for
+; BareMetal-AppPort's patched musl to intercept the way every other syscall
+; here goes through __bmos_syscall(). See BareMetal-AppPort's ZIG.md/
+; OPENISSUES.md Zig section for the full story, including the boot crash
+; (Exception 0x06 UD, RAX=__NR_gettid) that motivated this.
+;
+; Architecturally, on entry: RCX = return RIP, R11 = return RFLAGS (both set
+; by the `syscall` instruction itself -- must be preserved for `sysretq`
+; below), CS/SS = the kernel selectors IA32_STAR[47:32] names, RFLAGS
+; already masked per IA32_FMASK. RSP is UNCHANGED (still the app's own
+; stack) -- unlike an interrupt/exception gate, SYSCALL does not consult the
+; TSS RSP0, so the swap to a valid kernel stack has to happen by hand here,
+; onto the same fixed top int_syscall_exit/the TSS RSP0 already use (this
+; kernel is single-core, so one fixed stack is safe -- no per-CPU lookup
+; needed).
+;
+; IN: Linux x86-64 raw-syscall ABI, since that's the convention whatever
+; emitted the `syscall` opcode already assumed it was talking to -- RAX =
+; syscall number, RDI/RSI/RDX/R10/R8/R9 = args 1-6.
+; OUT: RAX = return value. RDI/RSI/RDX/R10/R8/R9 restored to their exact
+; pre-syscall values -- the real Linux ABI this is impersonating promises
+; only RAX/RCX/R11 ever change across a syscall, and callers written
+; against that real contract (Zig's compiler-generated `syscall` sequences
+; are modeled directly on it) may keep a value live in any of the other
+; argument registers across the call. An earlier version of this handler
+; used them as scratch space for its own arg-shuffling and never restored
+; them -- "worked" for one isolated syscall (nothing here reloads its own
+; operands from them right after), but silently corrupted whatever a
+; caller had chosen to keep live there across a second one: confirmed by a
+; real, repeatable test of two back-to-back raw `write` syscalls where only
+; the first one's output ever appeared.
+;
+; Rather than reimplement a second POSIX syscall dispatcher here, this
+; simply calls back into the very same app-side __bmos_syscall()
+; (BareMetal-AppPort's posix_shim.c) a plain `call __bmos_syscall` already
+; reaches for every other language -- ring 0 can call ring-3-mapped code
+; directly (no privilege check on the CALL itself, only on data/code access,
+; and this kernel currently maps the app's own high region execute/readable
+; regardless of ring -- see init.asm's PML4/PDPTE/PDE comments), so this
+; reuses 100% of the existing syscall-number dispatch logic instead of
+; duplicating it in assembly. The app publishes its own __bmos_syscall
+; address into app_bmos_syscall_ptr (sysvar.asm) once, at _start time
+; (crt0.c) -- see that variable's own comment for why a fixed kernel-side
+; offset can't just be hardcoded instead.
+align 8
+int_syscall_fast:
+	mov [app_syscall_rsp_scratch], rsp
+	mov rsp, [os_StackBase]
+	add rsp, 65536			; Same kernel stack top int_syscall_exit/TSS RSP0 use
+
+	; Save every register the real Linux ABI promises survives a syscall,
+	; not just what this handler happens to need -- see this routine's own
+	; header for why. 8 pushes (64 bytes) -- kernel_stack_top is 16-aligned
+	; and 64 is a multiple of 16, so RSP is still 16-aligned here too.
+	push rcx			; return RIP
+	push r11			; return RFLAGS
+	push rdi			; a1
+	push rsi			; a2
+	push rdx			; a3
+	push r10			; a4
+	push r8				; a5
+	push r9				; a6
+
+	; Marshal into __bmos_syscall(n,a1..a6)'s plain SysV C call ABI
+	; (RDI=n,RSI=a1,RDX=a2,RCX=a3,R8=a4,R9=a5, 7th arg a6 on the stack),
+	; reading the just-pushed COPIES above (at fixed offsets from the
+	; current RSP) rather than the original registers -- the originals are
+	; left untouched here so they can be restored byte-for-byte afterward.
+	mov rsi, [rsp+40]		; a1
+	mov rdx, [rsp+32]		; a2
+	mov rcx, [rsp+24]		; a3
+	mov r8,  [rsp+16]		; a4
+	mov r9,  [rsp+8]		; a5
+	mov rdi, rax			; n
+	push qword [rsp+0]		; a6 -> __bmos_syscall's 7th (stack) argument. This duplicates the saved copy already at [rsp+8+0]=[old rsp+0] rather than consuming it -- the original 8 pushes above stay intact for the restore below. RSP = top-72 here (72 mod 16 = 8, not yet aligned).
+	sub rsp, 8			; Alignment padding, value never read -- RSP = top-80, 16-aligned again for the call below.
+
+	mov rax, [app_bmos_syscall_ptr]
+	call rax
+	add rsp, 16			; Drop the pushed a6 and the alignment padding together -- RSP back to top-64, exactly where it was right after the 8 original pushes above.
+
+	; Restore in reverse push order -- RDI/RSI/RDX/R10/R8/R9 come back
+	; exactly as the app had them; RCX/R11 come back as this routine's own
+	; entry values, needed next for the iretq frame below (the real ABI
+	; doesn't promise these survive a syscall, but this routine needs their
+	; original values regardless to return to the right place).
+	pop r9
+	pop r8
+	pop r10
+	pop rdx
+	pop rsi
+	pop rdi
+	pop r11
+	pop rcx
+
+	; Return to ring 3 via iretq, not sysret. sysret was tried first (it's
+	; the "natural" pairing for SYSCALL) but produced intermittent,
+	; hard-to-pin-down #GP crashes here -- not conclusively root-caused
+	; (every STAR/GDT byte was re-verified against the assembled listing
+	; and checked out; `cli` in front of the whole handler, redundant with
+	; IA32_FMASK, made no difference, which argues against a masking/race
+	; explanation) despite real effort chasing it. iretq sidesteps whatever
+	; that was: it's the exact same ring0->ring3 return mechanism every
+	; other path in this kernel already uses successfully (start_app's own
+	; iretq, every interrupt return), just fed SYSRET_CS64_SEL/
+	; SYSRET_SS_SEL (still needed for STAR's arithmetic on the entry side)
+	; instead of USR64_CODE_SEL/USR64_DATA_SEL. RAX (the app-visible
+	; syscall return value) is untouched by any of this -- iretq only
+	; consumes the stack frame built below.
+	push qword SYSRET_SS_SEL | 3
+	push qword [app_syscall_rsp_scratch]
+	push r11
+	push qword SYSRET_CS64_SEL | 3
+	push rcx
+	iretq
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
 ; Keyboard interrupt. IRQ 0x01, INT 0x21
 ; This IRQ runs whenever there is input on the keyboard
 align 8

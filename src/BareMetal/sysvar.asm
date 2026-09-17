@@ -33,7 +33,15 @@ sys_Pure64:		equ 0x0000000000005000	; 0x005000 -> 0x007FFF	12K Pure64 system dat
 
 ; CLEANUP
 						; 0x008000 -> 0x00FFFF	32K Free
-sys_tss:		equ 0x0000000000008000
+sys_tss:		equ 0x0000000000008000		; 0x008000 -> 0x008067	104 bytes (64-bit TSS)
+
+; SYSCALL/SYSRET (IA32_LSTAR) fast-syscall support -- see int_syscall_fast's
+; own header comment (interrupt.asm) and BareMetal-AppPort's ZIG.md/
+; OPENISSUES.md Zig section for the full story of why this exists alongside
+; int 0x80/int_syscall. Sits in the same "free" 0x8000-0xFFFF region as
+; sys_tss, well clear of its 104 bytes.
+app_bmos_syscall_ptr:	equ 0x0000000000008100		; App-published address of its own __bmos_syscall() (posix_shim.c) -- written once by AppPort's crt0.c at _start time, before anything could possibly issue a syscall. Zeroed by init_64 at boot so a stray `syscall` before that point NULL-calls (and faults cleanly) instead of jumping into whatever garbage was left here. Currently readable/writable from ring 3 -- see init.asm's PML4/PDPTE/PDE U/S-bit comments (apps have full access to the low identity mapping today, a known/flagged TODO, not something introduced here).
+app_syscall_rsp_scratch: equ 0x0000000000008108		; Kernel-private scratch for int_syscall_fast's manual RSP swap (SYSCALL, unlike an interrupt/exception gate, does not consult the TSS RSP0).
 
 sys_pdl:		equ 0x0000000000010000	; 0x010000 -> 0x01FFFF	64K Page directory low (Maps up to 16GB of 2MiB pages or 8TB of 1GiB pages)
 sys_pdh:		equ 0x0000000000020000	; 0x020000 -> 0x09FFFF	512K Page directory high (Maps up to 128GB)
@@ -66,6 +74,9 @@ SYS64_DATA_SEL		equ 0x10
 USR64_CODE_SEL		equ 0x18
 USR64_DATA_SEL		equ 0x20
 TSS_SEL			equ 0x28
+SYSRET_CS32_SEL		equ 0x38		; TSS_SEL's descriptor is 16 bytes (long mode), so this starts at 0x28+16, not 0x28+8. Never dereferenced by sysretq -- exists only for the base/+8/+16 arithmetic IA32_STAR needs, see init.asm's gdt64
+SYSRET_SS_SEL		equ 0x40		; = SYSRET_CS32_SEL+8 -- the real ring-3 SS a fast (SYSCALL/SYSRET) syscall return loads
+SYSRET_CS64_SEL		equ 0x48		; = SYSRET_CS32_SEL+16 -- the real ring-3 CS a fast (SYSCALL/SYSRET) syscall return loads
 
 ; Vectors
 TIMER_VECTOR		equ 0x22		; Interrupt vector used for the LAPIC timer
