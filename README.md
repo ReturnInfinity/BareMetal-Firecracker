@@ -121,7 +121,9 @@ Init preps the system for the BareMetal Kernel. It sets the system up in a simil
 <tr><td>0x0000000000005000</td><td>0x0000000000005FFF</td><td>4 KiB</td><td>Init data</td></tr>
 <tr><td>0x0000000000006000</td><td>0x0000000000006FFF</td><td>4 KiB</td><td>Stack</td></tr>
 <tr><td>0x0000000000007000</td><td>0x0000000000007FFF</td><td>4 KiB</td><td>boot_params</td></tr>
-<tr><td>0x0000000000008000</td><td>0x000000000000FFFF</td><td>32 KiB</td><td>Stub</td></tr>
+<tr><td>0x0000000000008000</td><td>0x000000000000BFFF</td><td>16 KiB</td><td>Kernel: TSS, syscall scratch (see sysvar.asm)</td></tr>
+<tr><td>0x000000000000C000</td><td>0x000000000000CFFF</td><td>4 KiB</td><td>Kernel: virtio-mem virtqueue and request/response buffers</td></tr>
+<tr><td>0x000000000000D000</td><td>0x000000000000FFFF</td><td>12 KiB</td><td>Free</td></tr>
 <tr><td>0x0000000000010000</td><td>0x000000000001FFFF</td><td>64 KiB</td><td>PD Low - Entries are 8 bytes per 2MiB page</td></tr>
 <tr><td>0x0000000000020000</td><td>0x000000000005FFFF</td><td>256 KiB</td><td>PD High - Entries are 8 bytes per 2MiB page</td></tr>
 <tr><td>0x0000000000060000</td><td>0x000000000009FFFF</td><td>256 KiB</td><td>Free</td></tr>
@@ -138,14 +140,18 @@ Init preps the system for the BareMetal Kernel. It sets the system up in a simil
 <tr><th>Start Address</th><th>End Address</th><th>Size</th><th>Description</th></tr>
 <tr><td>0x0000000000005800</td><td>0x00000000000058FF</td><td>256 B</td><td>MMIO devices</td></tr>
 <tr><td>0x0000000000005900</td><td>0x00000000000059FF</td><td>256 B</td><td>memmap</td></tr>
-<tr><td>0x0000000000005A00</td><td>0x0000000000005AFF</td><td>256 B</td><td>cmdline</td></tr>
+<tr><td>0x0000000000005A00</td><td>0x0000000000005BFF</td><td>512 B</td><td>cmdline</td></tr>
 </table>
 
 ## BareMetal
 
 The BareMetal kernel in this repo has been adapted from the general version. VirtIO drivers have been reworked to use MMIO.
 
-Virtio-Block and Virtio-Net drivers are present. Virtio-Vsock, and other Firecracker-supported devices, are yet to be added.
+Virtio-Block, Virtio-Net, and Virtio-Mem drivers are present. Virtio-Vsock, and other Firecracker-supported devices, are yet to be added.
+
+### Memory hot-plug
+
+If the microVM was given a `/hotplug/memory` device, the kernel can grow the app's RAM at runtime. `b_system(GROW_MEMORY, mib, 0)` makes the virtio-mem driver (`src/BareMetal/drivers/mem/virtio-mem-mmio.asm`) plug blocks from Firecracker and append them, as 2 MiB pages, to the end of the app's memory window at `0xFFFF800000000000`; the window stays one contiguous range and `b_system(FREE_MEMORY, 0, 0)` reports the new total. Firecracker only lets the guest plug up to the `requested_size_mib` the host has set with `PATCH /hotplug/memory` (0 at boot, and the PATCH is only accepted once the driver has activated the device), so `baremetal.sh` sets it right after `InstanceStart`. Memory is never unplugged.
 
 SMP is not included in this version of BareMetal and will be added at a later date. BareMetal uses 2MiB of memory - A microVM should be provisioned with at least 4MiB of memory so 2MiB can be mapped at `0xFFFF800000000000`. 2MiB is the minimum if the application runs from kernel memory (there is some room).
 

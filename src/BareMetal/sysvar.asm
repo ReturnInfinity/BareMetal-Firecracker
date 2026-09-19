@@ -14,6 +14,7 @@ msg_baremetal:		db 13, 10, '[ BareMetal ]', 0
 msg_64:			db 13, 10, '64', 0
 msg_bus:		db 13, 10, 'bus', 0
 msg_nvs:		db 13, 10, 'nvs', 0
+msg_mem:		db 13, 10, 'mem', 0
 msg_net:		db 13, 10, 'net', 0
 msg_ok:			db ' ok', 0
 msg_ready:		db 13, 10, 'system ready', 13, 10, 13, 10, 0
@@ -42,6 +43,9 @@ sys_tss:		equ 0x0000000000008000		; 0x008000 -> 0x008067	104 bytes (64-bit TSS)
 ; sys_tss, well clear of its 104 bytes.
 app_bmos_syscall_ptr:	equ 0x0000000000008100		; App-published address of its own __bmos_syscall() (posix_shim.c) -- written once by AppPort's crt0.c at _start time, before anything could possibly issue a syscall. Zeroed by init_64 at boot so a stray `syscall` before that point NULL-calls (and faults cleanly) instead of jumping into whatever garbage was left here. Currently readable/writable from ring 3 -- see init.asm's PML4/PDPTE/PDE U/S-bit comments (apps have full access to the low identity mapping today, a known/flagged TODO, not something introduced here).
 app_syscall_rsp_scratch: equ 0x0000000000008108		; Kernel-private scratch for int_syscall_fast's manual RSP swap (SYSCALL, unlike an interrupt/exception gate, does not consult the TSS RSP0).
+
+; Firecracker's own boot page tables live at 0x9000-0xBFFF (unused once init loads its PML4 at 0x2000); 0xC000-0xFFFF is free per its layout
+os_mem_mem:		equ 0x000000000000C000	; 0x00C000 -> 0x00CFFF	4K virtio-mem virtqueue and request/response buffers (drivers/mem/virtio-mem-mmio.asm)
 
 sys_pdl:		equ 0x0000000000010000	; 0x010000 -> 0x01FFFF	64K Page directory low (Maps up to 16GB of 2MiB pages or 8TB of 1GiB pages)
 sys_pdh:		equ 0x0000000000020000	; 0x020000 -> 0x09FFFF	512K Page directory high (Maps up to 128GB)
@@ -104,14 +108,16 @@ os_virtionet_base:	equ os_SystemVariables + 0x00A0
 os_virtioblk_base:	equ os_SystemVariables + 0x00A8
 os_nvs_io:		equ os_SystemVariables + 0x00B0
 os_nvs_id:		equ os_SystemVariables + 0x00B8
+os_virtiomem_base:	equ os_SystemVariables + 0x00C0	; 0 if there is no usable virtio-mem device
 
 ; DD - Starting at offset 256, increments by 4
-os_MemAmount:		equ os_SystemVariables + 0x0104	; in MiB
+os_MemAmount:		equ os_SystemVariables + 0x0104	; in MiB. App RAM mapped at 0xFFFF800000000000; grows when virtio_mem_grow plugs more
 virtio_net_irq:		equ os_SystemVariables + 0x0108
 os_apic_ver:		equ os_SystemVariables + 0x0110
 os_BSP:			equ os_SystemVariables + 0x0118
 virtio_net_rxqueuesize:	equ os_SystemVariables + 0x0120
 virtio_net_txqueuesize:	equ os_SystemVariables + 0x0124
+virtio_mem_irq:		equ os_SystemVariables + 0x0128
 
 ; DW - Starting at offset 512, increments by 2
 os_NumCores:		equ os_SystemVariables + 0x0200

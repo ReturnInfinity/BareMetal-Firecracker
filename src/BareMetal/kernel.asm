@@ -38,6 +38,7 @@ start:
 	call init_64			; After this point we are in a working 64-bit environment
 	call init_bus			; Initialize system busses
 	call init_nvs			; Initialize non-volatile storage
+	call init_mem			; Initialize hot-pluggable memory
 	call init_net			; Initialize network
 	call init_hid			; Initialize human interface devices
 	call init_sys			; Initialize system
