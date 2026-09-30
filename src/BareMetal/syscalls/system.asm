@@ -42,6 +42,13 @@ b_system_wallclock:
 	call kvm_get_walltime
 	ret
 
+; Ask for RAX more MiB of app RAM (hot-plugged via virtio-mem and appended
+; to the app's window). Returns the new total in MiB - the same figure
+; b_system_free_memory reports - which is unchanged if nothing could be added.
+b_system_grow_memory:
+	call virtio_mem_grow
+	ret
+
 ; CPU
 ; N/A
 
@@ -272,7 +279,7 @@ b_system_table:
 	dw b_system_timecounter		; 0x00
 	dw b_system_free_memory		; 0x01
 	dw b_system_wallclock		; 0x02
-	dw none				; 0x03
+	dw b_system_grow_memory		; 0x03
 	dw none				; 0x04
 	dw none				; 0x05
 	dw none				; 0x06

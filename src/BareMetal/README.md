@@ -46,6 +46,8 @@ The premise of the kernel is to "do one thing well" and that is to execute a pro
   * Virtio-Net
 * Storage
   * Virtio-Blk
+* Memory
+  * Virtio-Mem (hot-plug)
 * HID (Human Interface Devices)
   * Input
     * Serial

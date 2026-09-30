@@ -39,6 +39,7 @@ void b_exit(void) __attribute__((noreturn));
 #define TIMECOUNTER		0x00
 #define FREE_MEMORY		0x01
 #define WALLCLOCK		0x02
+#define GROW_MEMORY		0x03	// IN: var1 = MiB wanted. OUT: new total app RAM in MiB (unchanged if none could be added)
 #define TSC			0x1F
 #define NET_STATUS		0x30
 #define NET_CONFIG		0x31

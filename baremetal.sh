@@ -12,6 +12,7 @@
 #	send <text>	Send a line of text to the VM serial console followed by Enter
 #	output		Print VM serial console output since last run
 #	attach		Attach to the interactive screen session for the VM console
+#	mem [mib]	Show hot-plug memory status, or set how much the guest may plug (MiB)
 #	stop		Send Ctrl+Alt+Del to gracefully shut down the VM
 #	help		Display help info
 #
@@ -19,12 +20,16 @@
 #	SOCKET		Unix socket path used by the Firecracker API
 #	KERNEL		Path to the BareMetal ELF kernel image
 #	DISK		Path to the disk image
-#	MEMSIZE		VM memory size in MiB
+#	MEMSIZE		VM boot memory size in MiB (must fit the kernel+app ELF)
 #	DISKSIZE	Size of the disk image, created on first start (e.g. 512M)
 #	SESSION		Screen session name
 #	VMLOG		Path to the VM serial console log file
 #	VMLOGPOS	Path to the output read-position tracking file
 #	FCLOG		Path to the firecracker log file
+#	MEMHOTPLUG_EN	1 to attach a virtio-mem device so the guest can grow its RAM on demand
+#	MEMHOTPLUG_MAX	Hot-pluggable memory ceiling in MiB; also handed to the guest as its plug budget at start
+#	MEMHOTPLUG_BLOCK Hot-plug block size in MiB (power of 2, minimum 2)
+#	MEMHOTPLUG_SLOT	KVM memory slot size in MiB (power of 2, >= block size)
 set -eu
 
 SOCKET=/tmp/firecracker.socket
@@ -38,7 +43,7 @@ FCLOG="/tmp/fc.log"
 VMLOG=/tmp/fc-vm.log
 VMLOGPOS=/tmp/fc-vm.log.pos
 MEMHOTPLUG_EN=1
-MEMHOTPLUG_MAX=1024
+MEMHOTPLUG_MAX=1024 # Guest RAM can grow to MEMSIZE + this. Only what the app actually touches costs host memory
 MEMHOTPLUG_BLOCK=2
 MEMHOTPLUG_SLOT=128 # 128 is the minimum for KVM
 
@@ -70,6 +75,37 @@ fc_put() {
 			exit 1
 			;;
 	esac
+}
+
+# Set how much hot-plug memory the guest may plug (virtio-mem's
+# requested_size). Firecracker boots with this at 0 and NACKs any plug
+# beyond it, so without this the guest's GROW_MEMORY calls always come
+# back empty. It also rejects the PATCH until the guest's virtio-mem
+# driver has activated the device -- a few ms into boot -- hence the
+# retry loop, which gives up (with a warning, not a failure) after ~5s.
+fc_mem_request() {
+	mib="$1"
+	tries=0
+	while :; do
+		tmp=$(mktemp)
+		status=$(curl -s -o "$tmp" -w '%{http_code}' --unix-socket "$SOCKET" -X PATCH 'http://localhost/hotplug/memory' \
+			-H 'Content-Type: application/json' -d "{ \"requested_size_mib\": $mib }")
+		case "$status" in
+			2??)
+				rm -f "$tmp"
+				return 0
+				;;
+		esac
+		tries=$((tries + 1))
+		if [ "$tries" -ge 100 ]; then
+			msg=$(sed -n 's/.*"fault_message"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$tmp")
+			rm -f "$tmp"
+			echo "Warning: could not set hot-plug requested_size_mib=$mib (HTTP $status): $msg" >&2
+			return 1
+		fi
+		rm -f "$tmp"
+		sleep 0.05
+	done
 }
 
 case "$cmd" in
@@ -163,6 +199,26 @@ case "$cmd" in
 
 		echo "BareMetal VM started. VM Log: $VMLOG, Firecracker Log: $FCLOG"
 
+		# Hand the guest its hot-plug budget (see fc_mem_request). The
+		# kernel's virtio-mem driver plugs blocks from it lazily as the
+		# app's allocations outgrow the boot RAM
+		if [ "$MEMHOTPLUG_EN" -eq 1 ]; then
+			fc_mem_request "$MEMHOTPLUG_MAX" || true
+		fi
+
+		;;
+
+	mem)
+		# Show the hot-plug memory state, optionally after setting how
+		# much the guest may plug (MiB, a multiple of MEMHOTPLUG_BLOCK,
+		# at most MEMHOTPLUG_MAX). Lowering it below what is already
+		# plugged has no effect: BareMetal never unplugs memory
+		if [ "$#" -gt 0 ]; then
+			fc_mem_request "$1"
+		fi
+		curl -sf --unix-socket "$SOCKET" 'http://localhost/hotplug/memory' || echo "Error: no hot-plug memory device (VM not running, or MEMHOTPLUG_EN=0)" >&2
+		echo
+
 		;;
 
 	send)
@@ -223,6 +279,7 @@ case "$cmd" in
 		echo "  send <text>        Send a line of text to the VM serial console"
 		echo "  output [--full]    Print new VM serial console output (--full for entire log)"
 		echo "  attach             Attach to the interactive screen session"
+		echo "  mem [mib]          Show hot-plug memory status, or set how much the guest may plug"
 		echo "  stop               Gracefully shut down the VM (Ctrl+Alt+Del)"
 		echo "  help               Show this help screen"
 		echo ""
@@ -235,6 +292,10 @@ case "$cmd" in
 		echo "  SESSION  $SESSION"
 		echo "  VMLOG    $VMLOG"
 		echo "  FCLOG    $FCLOG"
+		echo "  MEMHOTPLUG_EN    $MEMHOTPLUG_EN"
+		echo "  MEMHOTPLUG_MAX   $MEMHOTPLUG_MAX"
+		echo "  MEMHOTPLUG_BLOCK $MEMHOTPLUG_BLOCK"
+		echo "  MEMHOTPLUG_SLOT  $MEMHOTPLUG_SLOT"
 
 		;;
 

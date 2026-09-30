@@ -22,6 +22,7 @@ b_system		equ 0x0000000000100040	; Configure system. IN: RCX = Function, RAX = V
 TIMECOUNTER		equ 0x00	; Return # of nanoseconds elapsed since startup
 FREE_MEMORY		equ 0x01
 WALLCLOCK		equ 0x02
+GROW_MEMORY		equ 0x03	; Request RAX more MiB of app RAM. Returns the new total in MiB (unchanged if none could be added)
 TSC			equ 0x1F
 NET_STATUS		equ 0x30
 NET_CONFIG		equ 0x31

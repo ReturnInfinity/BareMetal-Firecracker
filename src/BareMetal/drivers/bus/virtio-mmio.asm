@@ -21,10 +21,12 @@ virtio_mmio_init_search:
 	jne virtio_mmio_init_skip
 	cmp dword [rax + 4], 2			; Version (1 = legacy, 2 = modern)
 	jne virtio_mmio_init_skip
-	cmp dword [rax + 8], 1			; DeviceID (1 = net, 2 = blk)
+	cmp dword [rax + 8], 1			; DeviceID (1 = net, 2 = blk, 24 = mem)
 	je virtio_mmio_init_found_net
-	cmp dword [rax + 8], 2			; DeviceID (1 = net, 2 = blk)
+	cmp dword [rax + 8], 2			; DeviceID (1 = net, 2 = blk, 24 = mem)
 	je virtio_mmio_init_found_blk
+	cmp dword [rax + 8], 24			; DeviceID (1 = net, 2 = blk, 24 = mem)
+	je virtio_mmio_init_found_mem
 
 virtio_mmio_init_skip:
 	lodsd					; Load the IRQ
@@ -39,6 +41,12 @@ virtio_mmio_init_found_net:
 virtio_mmio_init_found_blk:
 	mov [os_virtioblk_base], rax		; Save it as the base
 	lodsd					; Load the IRQ
+	jmp virtio_mmio_init_search
+
+virtio_mmio_init_found_mem:
+	mov [os_virtiomem_base], rax		; Save it as the base
+	lodsd					; Load the IRQ
+	mov [virtio_mem_irq], eax		; Recorded but unused - the driver polls
 	jmp virtio_mmio_init_search
 
 virtio_mmio_init_end:

@@ -100,14 +100,18 @@ good_boot:
 	mov ebx, [edi]
 	mov esi, [ebx + BP_HDR_CMD_LINE_PTR]
 	mov edi, 0x5A00
-	mov ecx, 256
+	mov ecx, 512			; Three virtio_mmio.device= entries (net, blk, mem) plus args= can pass 256 bytes
 	rep movsb
-	; Clear the old cmdline data memory as the PD high table is built there
+	; Clear the old cmdline data memory as the PD high table is built there.
+	; Clear all of it (Firecracker's CMDLINE_MAX_SIZE is 2048): any bytes
+	; left behind past the boot RAM's PDEs would look like live page
+	; directory entries to the virtio-mem driver, which appends hot-plugged
+	; blocks at the first zero entry
 	mov edi, boot_params_ptr
 	mov ebx, [edi]
 	mov edi, [ebx + BP_HDR_CMD_LINE_PTR]
 	xor eax, eax
-	mov ecx, 256/8
+	mov ecx, 2048/8
 	rep stosq
 
 	; Parse the Virtio MMIO devices provided in the cmdline
