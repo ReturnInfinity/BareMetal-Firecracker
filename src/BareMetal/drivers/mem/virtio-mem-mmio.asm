@@ -61,10 +61,10 @@ virtio_mem_mmio_reset_wait:
 	mov [rsi+VIRTIO_MMIO_STATUS], eax
 
 	; 3.1.1 - Step 4 - Feature negotiation
-	; Unlike the blk/net drivers this one can't skip it: Firecracker refuses
-	; to activate virtio-mem unless the driver acknowledges
-	; VIRTIO_MEM_F_UNPLUGGED_INACCESSIBLE, and VIRTIO_F_VERSION_1 (bit 32)
-	; is mandatory for any modern (non-legacy) device.
+	; Firecracker refuses to activate virtio-mem unless the driver
+	; acknowledges VIRTIO_MEM_F_UNPLUGGED_INACCESSIBLE, and
+	; VIRTIO_F_VERSION_1 (bit 32) is mandatory for any modern (non-legacy)
+	; device.
 	; Feature bits 31:0
 	xor eax, eax
 	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
@@ -466,7 +466,6 @@ virtio_mem_resp				equ os_mem_mem + 0x340	; struct virtio_mem_resp
 
 ; Virtqueue constants shared with the other virtio drivers but not defined there
 VIRTQ_AVAIL_F_NO_INTERRUPT		equ 1
-VIRTIO_F_VERSION_1			equ 32	; Transport feature bit: modern (non-legacy) device
 
 ; VIRTIO MEM Config space (offsets from VIRTIO_MMIO_CONFIG_SPACE)
 VIRTIO_MEM_BLOCK_SIZE			equ 0x00 ; 64-bit Block size and alignment

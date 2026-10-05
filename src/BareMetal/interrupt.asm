@@ -300,7 +300,7 @@ int_serial:
 
 
 ; -----------------------------------------------------------------------------
-; Network interrupt. IRQ 0x06, INT 0x26
+; Network interrupt. IRQ from the virtio_mmio.device= entry, INT 0x26
 ; This IRQ runs whenever there is input on the network adapter
 align 8
 int_network:

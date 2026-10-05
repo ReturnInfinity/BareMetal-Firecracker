@@ -5,7 +5,9 @@
 ; This init code is for the BareMetal Exokernel.
 ;
 ; Firecracker builds a Linux-style `boot_params` structure in memory. The
-; address of the structure is passed in RSI.
+; address of the structure is passed in RSI. When booted via PVH (QEMU, or
+; Firecracker with the PVH note present) startup_pvh in pvh.asm builds an
+; equivalent structure and enters here the same way.
 ;
 ; This code will do the following:
 ; - Parse the command line - will look something like "console=ttyS0 reboot=k panic=1 pci=off pci=off root=/dev/vda rw virtio_mmio.device=4K@0xc0001000:5 virtio_mmio.device=4K@0xc0002000:6"
@@ -74,6 +76,8 @@ startup_64:
 	; Check the address of the boot_params data
 	cmp esi, 0x7000			; Firecracker source hardcodes this
 	je good_boot			; Verify
+	cmp esi, PVH_BOOT_PARAMS	; Built by startup_pvh
+	je good_boot
 	mov eax, esi			; If not, dump the address and shut down
 	call debug_dump_eax
 	jmp shutdown
@@ -612,6 +616,7 @@ stub:
 %include "timer.asm"
 %include "cpu.asm"
 %include "debug.asm"
+%include "pvh.asm"
 
 ; x86-64 structures
 sys_idt:		equ 0x0000000000000000	; 0x000000 -> 0x000FFF	4K Interrupt descriptor table

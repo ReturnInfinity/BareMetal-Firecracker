@@ -83,6 +83,9 @@ VIRTIO_MMIO_QUEUE_DEVICE_HIGH		equ 0xA4 ; 32-bit
 VIRTIO_MMIO_QUEUE_RESET			equ 0xC0 ; 32-bit
 VIRTIO_MMIO_CONFIG_SPACE		equ 0x100
 
+; VIRTIO Feature bits common to all devices
+VIRTIO_F_VERSION_1			equ 32	; Transport feature bit: modern (non-legacy) device
+
 ; VIRTIO_STATUS Values
 VIRTIO_STATUS_FAILED			equ 0x80 ; Indicates that something went wrong in the guest, and it has given up on the device
 VIRTIO_STATUS_DEVICE_NEEDS_RESET	equ 0x40 ; Indicates that the device has experienced an error from which it can’t recover
