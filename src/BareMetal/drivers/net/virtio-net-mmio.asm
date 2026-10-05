@@ -46,7 +46,7 @@ net_virtio_mmio_init:
 	call create_gate
 
 	; Enable specific interrupts
-	mov ecx, 6			; Network IRQ
+	mov ecx, [virtio_net_irq]	; Network IRQ from the virtio_mmio.device= entry
 	mov eax, 0x26			; Network Interrupt Vector
 	call os_ioapic_mask_clear
 
@@ -97,26 +97,18 @@ virtio_net_mmio_reset_wait:
 	mov eax, VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER
 	mov [rsi+VIRTIO_MMIO_STATUS], eax
 
-	; 3.1.1 - Step 4
-	; Process the first 32-bits of Feature bits
-;	xor eax, eax
-;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
-	; Returns 2000DDA3
-;	xor eax, eax
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
-;	mov eax, 0x00010020		; Feature bits 31:0 - STATUS (16), MAC (5)
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax
-	; Process the next 32-bits of Feature bits
-;	mov eax, 1
-;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
-	; Returns ?
-;	mov eax, 1
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
-;	; TODO - Check into how LEGACY affects the 12-byte header
-;	mov eax, 1			; Feature bits 63:32 - LEGACY (32)
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax
+	; 3.1.1 - Step 4 - Feature negotiation
+	; Accept VIRTIO_F_VERSION_1 (bit 32) and nothing else. It is mandatory
+	; for a modern device (the bus scan only keeps version 2 devices).
+	; Without it QEMU uses the legacy 10-byte virtio_net_hdr while this
+	; driver (and Firecracker, regardless of features) uses the 12-byte one
+	xor eax, eax
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax	; Feature bits 31:0 - none
+	mov eax, 1
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
+	mov eax, 1 << (VIRTIO_F_VERSION_1 - 32)
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax	; Feature bits 63:32
 
 	; 3.1.1 - Step 5
 	mov eax, VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK

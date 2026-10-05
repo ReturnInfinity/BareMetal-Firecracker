@@ -38,32 +38,16 @@ virtio_blk_mmio_reset_wait:
 	mov eax, VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER
 	mov [rsi+VIRTIO_MMIO_STATUS], eax
 
-	; 3.1.1 - Step 4
-	; Process the first 32-bits of Feature bits
-;	xor eax, eax
-;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
-;	call os_debug_dump_eax
-;	call os_debug_newline
-	; returns 0x20000000
-;	xor eax, eax
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
-;	btc eax, VIRTIO_BLK_F_MQ	; Disable Multiqueue support for this driver
-;	btc eax, VIRTIO_F_INDIRECT_DESC
-;	mov eax, 0x44			; Only support BLK_SIZE (6) & SEG_MAX (2)
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax
-	; Process the next 32-bits of Feature bits
-;	mov eax, 1
-;	mov [rsi+VIRTIO_MMIO_DEVICE_FEATURES_SELECT], eax
-;	mov eax, [rsi+VIRTIO_MMIO_DEVICE_FEATURES]
-;	call os_debug_dump_eax
-;	call os_debug_newline
-	; returns 0x00000001
-;	mov eax, 1
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
-;	; TODO - Check into how LEGACY affects the 12-byte header
-;	mov eax, 1			; Feature bits 63:32 - LEGACY (32)
-;	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax
+	; 3.1.1 - Step 4 - Feature negotiation
+	; Accept VIRTIO_F_VERSION_1 (bit 32) and nothing else. It is mandatory
+	; for a modern device (the bus scan only keeps version 2 devices).
+	xor eax, eax
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax	; Feature bits 31:0 - none
+	mov eax, 1
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES_SELECT], eax
+	mov eax, 1 << (VIRTIO_F_VERSION_1 - 32)
+	mov [rsi+VIRTIO_MMIO_DRIVER_FEATURES], eax	; Feature bits 63:32
 
 	; 3.1.1 - Step 5
 	mov eax, VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK
