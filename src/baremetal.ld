@@ -6,6 +6,7 @@ PHDRS
 {
 	text PT_LOAD FLAGS(5);
 	data PT_LOAD FLAGS(6);
+	note PT_NOTE FLAGS(4);
 }
 
 SECTIONS
@@ -18,6 +19,11 @@ SECTIONS
 		*(.rodata*)
 	} :text
 
+	.note.Xen : ALIGN(4)
+	{
+		KEEP(*(.note.Xen))
+	} :text :note
+
 	.data : ALIGN(16)
 	{
 		*(.data*)
@@ -29,6 +35,7 @@ SECTIONS
 		*(COMMON)
 	} :data
 
+	ASSERT(. <= 0x00101000, "init overlaps the kernel at 0x101000")
 	. = 0x00101000;
 	.kernel :
 	{
