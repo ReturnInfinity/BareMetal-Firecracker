@@ -132,7 +132,11 @@ virtio_net_mmio_reset_wait:
 	xor eax, eax
 	mov [rsi+VIRTIO_MMIO_QUEUE_SELECT], eax
 	mov eax, [rsi+VIRTIO_MMIO_QUEUE_NUMMAX]	; Return the size of the queue
-	; returns 0x00000100 on firecracker
+	; returns 0x00000100 on firecracker, 0x00000400 on QEMU
+	cmp eax, VIRTIO_NET_QUEUE_MAX		; os_rx_desc/os_tx_desc and os_rx_buffer
+	jbe virtio_net_init_rxq_ok		; only have room for this many entries
+	mov eax, VIRTIO_NET_QUEUE_MAX
+virtio_net_init_rxq_ok:
 	mov [virtio_net_rxqueuesize], eax		; Store receive queue size
 	mov [rsi+VIRTIO_MMIO_QUEUE_NUM], eax	; Tell the device we support that number
 	mov ebx, eax			; Copy receive queue size to EBX
@@ -162,6 +166,10 @@ virtio_net_mmio_reset_wait:
 	mov eax, 1
 	mov [rsi+VIRTIO_MMIO_QUEUE_SELECT], eax
 	mov eax, [rsi+VIRTIO_MMIO_QUEUE_NUMMAX]	; Return the size of the queue
+	cmp eax, VIRTIO_NET_QUEUE_MAX		; Same cap as the RX queue
+	jbe virtio_net_init_txq_ok
+	mov eax, VIRTIO_NET_QUEUE_MAX
+virtio_net_init_txq_ok:
 	mov [virtio_net_txqueuesize], eax		; Store receive queue size
 	mov [rsi+VIRTIO_MMIO_QUEUE_NUM], eax	; Tell the device we support that number
 	mov ebx, eax			; Copy transmit queue size to EBX
@@ -488,6 +496,11 @@ net_virtio_mmio_int:
 txavailindex: dw 0
 txusedindex: dw 0
 rxavailindex: dw 0
+
+; Queue size cap: os_rx_desc/os_tx_desc (32K each) and os_rx_buffer
+; (256 x 2048 bytes, sysvar.asm) are sized for 256 entries. QEMU offers
+; 1024, which would run the RX buffers into the stacks and the app.
+VIRTIO_NET_QUEUE_MAX			equ 256
 
 ; VIRTQUEUE Descriptor Flags
 VIRTQ_DESC_F_NEXT			equ 1
