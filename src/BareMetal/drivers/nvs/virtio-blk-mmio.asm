@@ -17,7 +17,7 @@ virtio_blk_mmio_init:
 	; Check for a valid device
 	mov rsi, [os_virtioblk_base]
 	cmp rsi, 0
-	je virtio_blk_mmio_init_done
+	je virtio_blk_mmio_init_error	; No device - leave the storage syscalls on os_stub
 
 	; Device Initialization (section 3.1)
 	; TODO - Move to reset function
@@ -72,6 +72,8 @@ virtio_blk_mmio_reset_wait:
 	mov [rsi+VIRTIO_MMIO_QUEUE_SELECT], eax
 	mov eax, [rsi+VIRTIO_MMIO_QUEUE_NUMMAX]	; Return the size of the queue
 	; returns 0x00000100 on firecracker
+	test eax, eax			; Queue 0 not available
+	jz virtio_blk_mmio_init_error
 	mov [virtio_blk_queuesize], eax		; Store receive queue size
 	mov [rsi+VIRTIO_MMIO_QUEUE_NUM], eax	; Tell the device we support that number
 	mov ebx, eax			; Copy receive queue size to EBX
