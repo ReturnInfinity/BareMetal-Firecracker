@@ -19,10 +19,10 @@ init_sys:
 	; Calibrate the APIC timer against KVM
 	call os_apic_timer_calibrate
 
-	; Start the periodic timer
-	mov rax, 1000000		; 1,000,000 ns = 1ms (1000Hz)
-	mov ecx, 0x68
-	call b_system
+	; No periodic timer is started here anymore. The kernel is tickless: an idle
+	; HLT stays halted until a device interrupt arrives, and b_sleep arms a
+	; one-shot LAPIC timer only for the duration of the sleep. An app that
+	; wants a periodic tick (e.g. for CALLBACK_TIMER) enables it via TIMER_SET.
 
 %ifdef DEBUG
 	; Output progress via serial

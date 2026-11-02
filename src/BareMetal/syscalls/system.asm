@@ -179,39 +179,74 @@ b_tsc:
 ; b_sleep -- Sleep for X nanoseconds
 ; IN:	RAX = Number of nanoseconds
 ; OUT:	Nothing
-; Note:	Resolution is limited to the APIC tick period since this waits on the os_ticks counter
+;	All registers preserved
+; Note:	Tickless - the CPU halts until the deadline (measured with the KVM
+;	clock). If no periodic timer is running, a one-shot LAPIC timer is armed
+;	for the remaining time so the CPU wakes once, rather than on every tick
+;	of a free-running periodic timer.
 b_sleep:
 	push rax
 	push rbx
 	push rcx
 	push rdx
+	pushfq
 
-	; Convert the requested nanosecond delay to a whole number of APIC
-	; ticks, rounding up so the sleep never returns early
-	mov rcx, [os_apic_timer_period]
-	cmp rcx, 0
-	jz b_sleep_done
-	dec rcx
-	add rax, rcx			; RAX = ns + (period - 1)
-	inc rcx				; RCX = period (restored)
-	xor rdx, rdx
-	div rcx				; RAX = ceil(ns / period) ticks
 	test rax, rax
-	jnz b_sleep_have_ticks
-	inc rax				; Always wait at least 1 tick
-b_sleep_have_ticks:
-
-	mov rbx, [os_ticks]
-	add rbx, rax			; RBX = target tick count
+	jz b_sleep_done
+	mov rbx, rax
+	call [sys_timer]		; RAX = nanoseconds since boot
+	add rbx, rax			; RBX = deadline in nanoseconds
 
 b_sleep_snooze:
-	cmp qword [os_ticks], rbx	; Reached (or passed) the target tick?
-	jae b_sleep_done		; If so, bail out
+	cli				; No interrupt may land between arming and HLT
+	call [sys_timer]
+	cmp rax, rbx			; Reached (or passed) the deadline?
+	jae b_sleep_finish
 
-	hlt				; Halt the CPU until the next tick interrupt
+	; If an app enabled a periodic timer then its tick will wake us
+	cmp qword [os_apic_timer_period], 0
+	jne b_sleep_halt
+
+	; Arm a one-shot LAPIC timer for the remaining time
+	; APIC ticks = (remaining_ns * ticks_per_ms) / 1,000,000
+	mov rcx, rbx
+	sub rcx, rax			; RCX = remaining nanoseconds
+	mov rax, 1000000000
+	cmp rcx, rax			; Cap a single wait at 1 second so the math
+	jbe b_sleep_arm			; below can't overflow - we re-arm on wake
+	mov rcx, rax
+b_sleep_arm:
+	mov rax, rcx
+	mul qword [os_apic_timer_freq]	; RDX:RAX = remaining_ns * ticks_per_ms
+	mov rcx, 1000000
+	div rcx				; RAX = remaining LAPIC timer ticks
+	test rax, rax
+	jnz b_sleep_arm_count
+	inc rax				; Always wait at least 1 tick
+b_sleep_arm_count:
+	push rax
+	mov ecx, APIC_LVT_TMR
+	mov eax, APIC_LVT_ONESHOT | TIMER_VECTOR
+	call os_apic_write
+	pop rax
+	mov ecx, APIC_TMRINITCNT
+	call os_apic_write
+
+b_sleep_halt:
+	sti				; STI's interrupt shadow covers the HLT, so a
+	hlt				; pending interrupt can't slip in before it
 	jmp b_sleep_snooze
 
+b_sleep_finish:
+	; Cancel a one-shot that may still be pending (woken by another IRQ)
+	cmp qword [os_apic_timer_period], 0
+	jne b_sleep_done
+	mov ecx, APIC_TMRINITCNT
+	xor eax, eax
+	call os_apic_write
+
 b_sleep_done:
+	popfq				; Restore the caller's interrupt flag
 	pop rdx
 	pop rcx
 	pop rbx
