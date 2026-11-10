@@ -104,6 +104,7 @@ os_TimerCallback:	equ os_SystemVariables + 0x0078
 os_apic_timer_freq:	equ os_SystemVariables + 0x0080	; LAPIC timer ticks per millisecond
 os_ticks:		equ os_SystemVariables + 0x0088	; Free-running count of scheduler tick interrupts
 os_apic_timer_period:	equ os_SystemVariables + 0x0090
+os_io_wake:		equ os_SystemVariables + 0x0098	; Set by I/O interrupts, cleared by b_sleep_io
 os_virtionet_base:	equ os_SystemVariables + 0x00A0
 os_virtioblk_base:	equ os_SystemVariables + 0x00A8
 os_nvs_io:		equ os_SystemVariables + 0x00B0

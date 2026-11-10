@@ -109,7 +109,14 @@ os_apic_write_x2apic:
 ;	All registers preserved
 ; Note:	os_clock_init_kvm must have run first so kvm_delay is available.
 ;	The TIMER_VECTOR IDT gate must already be installed (see os_apic_init).
+;	Both ends of the measurement window are timestamped with the KVM clock
+;	right after reading the counter, rather than assuming the window lasted
+;	exactly as long as kvm_delay was asked for. The counter read/write VM
+;	exits and kvm_delay's overshoot used to inflate the result by ~0.5%,
+;	which made every one-shot b_sleep wait ~0.5% too long (5ms per second).
 os_apic_timer_calibrate:
+	push r9
+	push r8
 	push rdx
 	push rcx
 	push rbx
@@ -130,27 +137,46 @@ os_apic_timer_calibrate:
 	mov eax, 0xFFFFFFFF
 	call os_apic_write
 
-	; Let it run for 1ms, timed via the calibrated KVM/TSC clock
-	mov rax, 1000000		; 1,000,000 ns = 1ms
-	call kvm_delay
-
-	; See how far the counter dropped in that time
+	; Window start: counter, then time
 	mov ecx, APIC_TMRCURRCNT
 	call os_apic_read
-	mov ebx, 0xFFFFFFFF
-	sub ebx, eax
+	mov r8d, eax			; R8 = starting count
+	call [sys_timer]
+	mov r9, rax			; R9 = starting time in ns
+
+	; Let it run for ~10ms (~10M ticks at KVM's 1GHz, well inside 32 bits)
+	mov rax, 10000000
+	call kvm_delay
+
+	; Window end: counter, then time - same order, so the read latency cancels
+	mov ecx, APIC_TMRCURRCNT
+	call os_apic_read
+	mov ebx, eax			; RBX = ending count
+	call [sys_timer]
+	sub rax, r9
+	mov rcx, rax			; RCX = elapsed ns
 
 	; Stop the timer
 	xor eax, eax
+	push rcx
 	mov ecx, APIC_TMRINITCNT
 	call os_apic_write
+	pop rcx
 
-	mov [os_apic_timer_freq], rbx	; Save resulting value
+	; ticks per ms = (start - end) * 1,000,000 / elapsed_ns
+	mov eax, r8d
+	sub eax, ebx			; RAX = ticks elapsed (zero-extended)
+	mov rbx, 1000000
+	mul rbx				; RDX:RAX = ticks * 1,000,000
+	div rcx				; RAX = ticks per ms
+	mov [os_apic_timer_freq], rax	; Save resulting value
 
 	pop rax
 	pop rbx
 	pop rcx
 	pop rdx
+	pop r8
+	pop r9
 	ret
 ; -----------------------------------------------------------------------------
 
