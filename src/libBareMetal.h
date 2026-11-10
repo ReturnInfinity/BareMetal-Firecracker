@@ -55,6 +55,7 @@ void b_exit(void) __attribute__((noreturn));
 #define DUMP_RAX		0x71
 #define DELAY			0x72
 #define SLEEP			0x73
+#define SLEEP_IO		0x74	// IN: var1 = max ns. OUT: 1 if a network/keyboard/serial interrupt ended it early, else 0
 #define RESET			0x7D
 #define REBOOT			0x7E
 #define SHUTDOWN		0x7F

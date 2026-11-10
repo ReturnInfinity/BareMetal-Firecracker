@@ -136,6 +136,10 @@ b_system_sleep:
 	call b_sleep
 	ret
 
+b_system_sleep_io:
+	call b_sleep_io
+	ret
+
 b_system_reboot:
 	call reboot
 
@@ -186,26 +190,71 @@ b_tsc:
 ;	of a free-running periodic timer.
 b_sleep:
 	push rax
+	push rdx
+	xor edx, edx			; Sleep the full duration
+	call os_sleep
+	pop rdx
+	pop rax
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; b_sleep_io -- Sleep for up to X nanoseconds, or until an I/O interrupt
+; IN:	RAX = Maximum number of nanoseconds
+; OUT:	RAX = 1 if an I/O interrupt (network, keyboard, serial) ended the
+;	sleep, 0 if the full duration passed
+;	All other registers preserved
+; Note:	Lets an app wait for input without polling. The I/O interrupt
+;	handlers set os_io_wake, and only this call clears it, so an
+;	interrupt that lands after the app last checked for input (but before
+;	this call) still ends the next sleep right away - no wakeup is lost.
+;	The flip side is the odd spurious early return, which callers must
+;	treat as "check again".
+b_sleep_io:
+	push rdx
+	mov edx, 1			; Return early on an I/O interrupt
+	call os_sleep
+	pop rdx
+	ret
+; -----------------------------------------------------------------------------
+
+
+; -----------------------------------------------------------------------------
+; os_sleep -- Shared body of b_sleep and b_sleep_io
+; IN:	RAX = Number of nanoseconds
+;	RDX = 1 to return early once os_io_wake is set, 0 to ignore it
+; OUT:	RAX = 1 if os_io_wake ended the sleep, 0 otherwise
+;	All other registers preserved
+os_sleep:
 	push rbx
 	push rcx
 	push rdx
+	push rsi
 	pushfq
 
+	mov rsi, rdx			; RSI = I/O wake mode
+	xor ebx, ebx			; RBX = result if we return right away
 	test rax, rax
-	jz b_sleep_done
+	jz os_sleep_done
 	mov rbx, rax
 	call [sys_timer]		; RAX = nanoseconds since boot
 	add rbx, rax			; RBX = deadline in nanoseconds
 
-b_sleep_snooze:
+os_sleep_snooze:
 	cli				; No interrupt may land between arming and HLT
+	test rsi, rsi
+	jz os_sleep_check_time
+	cmp qword [os_io_wake], 0	; Did an I/O interrupt arrive?
+	jne os_sleep_io_woke
+os_sleep_check_time:
 	call [sys_timer]
 	cmp rax, rbx			; Reached (or passed) the deadline?
-	jae b_sleep_finish
+	jae os_sleep_timed_out
 
 	; If an app enabled a periodic timer then its tick will wake us
 	cmp qword [os_apic_timer_period], 0
-	jne b_sleep_halt
+	jne os_sleep_halt
 
 	; Arm a one-shot LAPIC timer for the remaining time
 	; APIC ticks = (remaining_ns * ticks_per_ms) / 1,000,000
@@ -213,17 +262,17 @@ b_sleep_snooze:
 	sub rcx, rax			; RCX = remaining nanoseconds
 	mov rax, 1000000000
 	cmp rcx, rax			; Cap a single wait at 1 second so the math
-	jbe b_sleep_arm			; below can't overflow - we re-arm on wake
+	jbe os_sleep_arm		; below can't overflow - we re-arm on wake
 	mov rcx, rax
-b_sleep_arm:
+os_sleep_arm:
 	mov rax, rcx
 	mul qword [os_apic_timer_freq]	; RDX:RAX = remaining_ns * ticks_per_ms
 	mov rcx, 1000000
 	div rcx				; RAX = remaining LAPIC timer ticks
 	test rax, rax
-	jnz b_sleep_arm_count
+	jnz os_sleep_arm_count
 	inc rax				; Always wait at least 1 tick
-b_sleep_arm_count:
+os_sleep_arm_count:
 	push rax
 	mov ecx, APIC_LVT_TMR
 	mov eax, APIC_LVT_ONESHOT | TIMER_VECTOR
@@ -232,25 +281,34 @@ b_sleep_arm_count:
 	mov ecx, APIC_TMRINITCNT
 	call os_apic_write
 
-b_sleep_halt:
+os_sleep_halt:
 	sti				; STI's interrupt shadow covers the HLT, so a
 	hlt				; pending interrupt can't slip in before it
-	jmp b_sleep_snooze
+	jmp os_sleep_snooze
 
-b_sleep_finish:
+os_sleep_io_woke:
+	mov qword [os_io_wake], 0	; Consumed - the caller will go look
+	mov ebx, 1
+	jmp os_sleep_finish
+
+os_sleep_timed_out:
+	xor ebx, ebx
+
+os_sleep_finish:
 	; Cancel a one-shot that may still be pending (woken by another IRQ)
 	cmp qword [os_apic_timer_period], 0
-	jne b_sleep_done
+	jne os_sleep_done
 	mov ecx, APIC_TMRINITCNT
 	xor eax, eax
 	call os_apic_write
 
-b_sleep_done:
+os_sleep_done:
+	mov rax, rbx
 	popfq				; Restore the caller's interrupt flag
+	pop rsi
 	pop rdx
 	pop rcx
 	pop rbx
-	pop rax
 	ret
 ; -----------------------------------------------------------------------------
 
@@ -439,7 +497,7 @@ b_system_table:
 	dw b_system_debug_dump_rax	; 0x71
 	dw b_system_delay		; 0x72
 	dw b_system_sleep		; 0x73
-	dw none				; 0x74
+	dw b_system_sleep_io		; 0x74
 	dw none				; 0x75
 	dw none				; 0x76
 	dw none				; 0x77

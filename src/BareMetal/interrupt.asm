@@ -188,6 +188,7 @@ int_keyboard:
 	push rax
 
 	call ps2_keyboard_interrupt	; Call keyboard interrupt code in PS/2 driver
+	mov qword [os_io_wake], 1	; End a pending b_sleep_io
 
 	; Acknowledge the IRQ
 	mov ecx, APIC_EOI
@@ -287,6 +288,7 @@ int_serial:
 	push rax
 
 	call serial_interrupt	; Call interrupt code in serial driver
+	mov qword [os_io_wake], 1	; End a pending b_sleep_io
 
 	; Acknowledge the IRQ
 	mov ecx, APIC_EOI
@@ -311,6 +313,7 @@ int_network:
 	mov rsi, [os_virtionet_base]
 	mov eax, [rsi+VIRTIO_MMIO_INT_STATUS]
 	mov [rsi+VIRTIO_MMIO_INT_ACK], eax
+	mov qword [os_io_wake], 1	; End a pending b_sleep_io
 
 	; Acknowledge the IRQ
 	mov ecx, APIC_EOI

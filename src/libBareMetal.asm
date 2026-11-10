@@ -38,6 +38,7 @@ DUMP_MEM		equ 0x70
 DUMP_RAX		equ 0x71
 DELAY			equ 0x72	; Delay by # microseconds
 SLEEP			equ 0x73	; Sleep by # nanoseconds
+SLEEP_IO		equ 0x74	; Sleep by up to # nanoseconds, or until a network/keyboard/serial interrupt
 RESET			equ 0x7D
 REBOOT			equ 0x7E
 SHUTDOWN		equ 0x7F
