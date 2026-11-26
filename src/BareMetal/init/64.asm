@@ -67,9 +67,9 @@ make_interrupt_gate_stubs:
 	or byte [edi], 0x60		; Raise DPL 0 -> DPL 3 (bits 6:5)
 
 	; Zero app_bmos_syscall_ptr so a `syscall` instruction reaching
-	; int_syscall_fast before the app has published its own __bmos_syscall()
-	; address (crt0.c, very first thing _start_c does) NULL-calls and faults
-	; cleanly, instead of jumping into whatever garbage was left in this low
+	; int_syscall_fast before the app has published its trampoline's
+	; address (crt0.c, very first thing _start_c does) faults cleanly at
+	; RIP 0, instead of jumping into whatever garbage was left in this low
 	; page at boot.
 	xor eax, eax
 	mov [app_bmos_syscall_ptr], rax
