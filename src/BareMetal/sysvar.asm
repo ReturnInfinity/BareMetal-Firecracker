@@ -41,8 +41,7 @@ sys_tss:		equ 0x0000000000008000		; 0x008000 -> 0x008067	104 bytes (64-bit TSS)
 ; OPENISSUES.md Zig section for the full story of why this exists alongside
 ; int 0x80/int_syscall. Sits in the same "free" 0x8000-0xFFFF region as
 ; sys_tss, well clear of its 104 bytes.
-app_bmos_syscall_ptr:	equ 0x0000000000008100		; App-published address of its own __bmos_syscall() (posix_shim.c) -- written once by AppPort's crt0.c at _start time, before anything could possibly issue a syscall. Zeroed by init_64 at boot so a stray `syscall` before that point NULL-calls (and faults cleanly) instead of jumping into whatever garbage was left here. Currently readable/writable from ring 3 -- see init.asm's PML4/PDPTE/PDE U/S-bit comments (apps have full access to the low identity mapping today, a known/flagged TODO, not something introduced here).
-app_syscall_rsp_scratch: equ 0x0000000000008108		; Kernel-private scratch for int_syscall_fast's manual RSP swap (SYSCALL, unlike an interrupt/exception gate, does not consult the TSS RSP0).
+app_bmos_syscall_ptr:	equ 0x0000000000008100		; App-published address of its ring-3 raw-syscall trampoline (__bmos_syscall_tramp, AppPort's crt0.c), where int_syscall_fast sends every `syscall` instruction. Written once by crt0.c at _start time, before anything could possibly issue a syscall. Zeroed by init_64 at boot so a stray `syscall` before that point faults cleanly (RIP 0) instead of jumping into whatever garbage was left here. Currently readable/writable from ring 3 -- see init.asm's PML4/PDPTE/PDE U/S-bit comments (apps have full access to the low identity mapping today, a known/flagged TODO, not something introduced here).
 
 ; Firecracker's own boot page tables live at 0x9000-0xBFFF (unused once init loads its PML4 at 0x2000); 0xC000-0xFFFF is free per its layout
 os_mem_mem:		equ 0x000000000000C000	; 0x00C000 -> 0x00CFFF	4K virtio-mem virtqueue and request/response buffers (drivers/mem/virtio-mem-mmio.asm)
